@@ -361,17 +361,26 @@ def get_santander_credentials():
         # Comportamento esperado no cloud - não é erro!
         # Fallback para secrets
         if "santander_fundos" in st.secrets:
+            # DEBUG: Mostrar todas as chaves do secrets
+            all_keys = list(st.secrets["santander_fundos"].keys())
+            print(f"🔍 DEBUG: Total de chaves em santander_fundos: {len(all_keys)}")
+            print(f"🔍 DEBUG: Chaves: {all_keys[:10]}...")  # Primeiras 10
+            
             # Converter secrets para dict no formato esperado
             fundos_dict = {}
+            skipped_keys = []
+            
             for fundo_id in st.secrets["santander_fundos"].keys():
                 # Pular certificados compartilhados (cert_pem, key_pem)
                 if fundo_id in ["cert_pem", "key_pem"]:
+                    skipped_keys.append(f"{fundo_id} (certificado)")
                     continue
                 
                 fundo_secrets = st.secrets["santander_fundos"][fundo_id]
                 
                 # Validar se é um dicionário (fundo) e não uma string (certificado)
                 if not isinstance(fundo_secrets, dict):
+                    skipped_keys.append(f"{fundo_id} (não é dict: {type(fundo_secrets).__name__})")
                     continue
                 
                 # Montar dict no formato do credenciais_bancos.py
@@ -392,9 +401,13 @@ def get_santander_credentials():
                 if "key_path" in fundo_secrets:
                     fundos_dict[fundo_id]["key_path"] = fundo_secrets["key_path"]
             
+            print(f"✅ DEBUG: {len(fundos_dict)} fundos carregados")
+            print(f"⏭️ DEBUG: {len(skipped_keys)} chaves puladas: {skipped_keys}")
+            
             return fundos_dict, "secrets"
         else:
             # Nenhuma fonte de credenciais disponível (esperado se não configurado)
+            print("❌ DEBUG: santander_fundos não encontrado em st.secrets")
             return {}, "none"
     
     except Exception as e:
