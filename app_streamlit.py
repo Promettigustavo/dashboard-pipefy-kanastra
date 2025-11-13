@@ -331,16 +331,19 @@ if aba_selecionada == "💰 Liquidação":
             st.markdown("### 🤖 Automação via API Pipefy")
             st.info("💡 Busca automaticamente cards do Pipefy e processa via API Santander")
             
-            # Seleção do módulo
-            modulo_auto = st.selectbox(
-                "Selecione a automação",
+            # Seleção do módulo com radio buttons
+            st.markdown("**Selecione a automação:**")
+            modulo_auto = st.radio(
+                "Módulo",
                 options=[
                     "Auto Liquidação",
                     "Auto Taxas",
                     "Auto Amortização",
                     "Auto Taxas ANBIMA"
                 ],
-                key="modulo_auto"
+                label_visibility="collapsed",
+                key="modulo_auto",
+                horizontal=False
             )
             
             # Descrições
@@ -394,10 +397,13 @@ if aba_selecionada == "💰 Liquidação":
             
             st.markdown("---")
             
-            # Opções avançadas
-            with st.expander("⚙️ Opções Avançadas"):
-                anexar_comp = st.checkbox("Anexar comprovantes", value=True, key="anexar_comp_auto")
-                apenas_simular = st.checkbox("Apenas simular (não executar)", value=False, key="simular_auto")
+            # Opções de processamento (checkboxes visíveis)
+            st.markdown("**⚙️ Opções de Processamento:**")
+            col_opt1, col_opt2 = st.columns(2)
+            with col_opt1:
+                anexar_comp = st.checkbox("📎 Anexar comprovantes", value=True, key="anexar_comp_auto")
+            with col_opt2:
+                apenas_simular = st.checkbox("🔍 Apenas simular", value=False, key="simular_auto")
             
             st.markdown("---")
             
@@ -612,15 +618,17 @@ if aba_selecionada == "💰 Liquidação":
         with col2:
             st.markdown("### ⚙️ Configurações")
             
-            # Seleção do módulo
-            modulo_selecionado = st.selectbox(
-                "Módulo para executar",
+            # Seleção do módulo com radio buttons
+            st.markdown("**Selecione o módulo:**")
+            modulo_selecionado = st.radio(
+                "Módulo",
                 options=[
                     "Pipe Liquidação",
                     "Taxas ARBI",
                     "Pipe Taxas",
                     "Amortização"
                 ],
+                label_visibility="collapsed",
                 key="modulo_liquidacao"
             )
             
