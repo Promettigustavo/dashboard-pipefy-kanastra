@@ -885,19 +885,56 @@ if aba_selecionada == "💰 Liquidação":
                     
                     if resultado is not None:
                         st.success("✅ Cards movidos para análise com sucesso!")
+                        
                         if isinstance(resultado, dict):
+                            # Organizar métricas em colunas
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            metrics = {}
+                            lists = {}
+                            others = {}
+                            
                             for key, value in resultado.items():
-                                # Exibir apenas valores numéricos no st.metric
                                 if isinstance(value, (int, float)):
-                                    st.metric(key, value)
+                                    metrics[key] = value
                                 elif isinstance(value, list):
-                                    st.write(f"**{key}**: {len(value)} card(s)")
-                                    if value:
-                                        with st.expander(f"Ver detalhes de {key}"):
-                                            for card in value:
-                                                st.json(card)
+                                    lists[key] = value
                                 else:
-                                    st.write(f"**{key}**: {value}")
+                                    others[key] = value
+                            
+                            # Exibir métricas numéricas em colunas
+                            cols = [col1, col2, col3, col4]
+                            for idx, (key, value) in enumerate(metrics.items()):
+                                with cols[idx % 4]:
+                                    # Traduzir nomes das métricas
+                                    label_map = {
+                                        'fase_origem_id': '📤 Fase Origem',
+                                        'fase_destino_id': '📥 Fase Destino',
+                                        'cards_movimentaveis': '🎯 Movimentáveis',
+                                        'cards_bloqueados': '🔒 Bloqueados',
+                                        'cards_movidos': '✅ Movidos',
+                                        'cards_com_erro': '❌ Com Erro'
+                                    }
+                                    label = label_map.get(key, key)
+                                    st.metric(label, value)
+                            
+                            # Exibir listas em expanders
+                            for key, value in lists.items():
+                                if value:
+                                    label_map = {
+                                        'cards_movimentaveis': '🎯 Cards Movimentáveis',
+                                        'cards_bloqueados': '🔒 Cards Bloqueados',
+                                        'cards_movidos': '✅ Cards Movidos',
+                                        'cards_com_erro': '❌ Cards com Erro'
+                                    }
+                                    label = label_map.get(key, key)
+                                    with st.expander(f"{label} ({len(value)})"):
+                                        for card in value:
+                                            st.json(card)
+                            
+                            # Exibir outros valores
+                            for key, value in others.items():
+                                st.info(f"**{key}**: {value}")
                         else:
                             st.metric("Cards movidos", resultado)
                     else:
@@ -928,19 +965,56 @@ if aba_selecionada == "💰 Liquidação":
                     
                     if resultado is not None:
                         st.success("✅ Cards movidos para 2ª aprovação com sucesso!")
+                        
                         if isinstance(resultado, dict):
+                            # Organizar métricas em colunas
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            metrics = {}
+                            lists = {}
+                            others = {}
+                            
                             for key, value in resultado.items():
-                                # Exibir apenas valores numéricos no st.metric
                                 if isinstance(value, (int, float)):
-                                    st.metric(key, value)
+                                    metrics[key] = value
                                 elif isinstance(value, list):
-                                    st.write(f"**{key}**: {len(value)} card(s)")
-                                    if value:
-                                        with st.expander(f"Ver detalhes de {key}"):
-                                            for card in value:
-                                                st.json(card)
+                                    lists[key] = value
                                 else:
-                                    st.write(f"**{key}**: {value}")
+                                    others[key] = value
+                            
+                            # Exibir métricas numéricas em colunas
+                            cols = [col1, col2, col3, col4]
+                            for idx, (key, value) in enumerate(metrics.items()):
+                                with cols[idx % 4]:
+                                    # Traduzir nomes das métricas
+                                    label_map = {
+                                        'fase_origem_id': '📤 Fase Origem',
+                                        'fase_destino_id': '📥 Fase Destino',
+                                        'cards_movimentaveis': '🎯 Movimentáveis',
+                                        'cards_bloqueados': '🔒 Bloqueados',
+                                        'cards_movidos': '✅ Movidos',
+                                        'cards_com_erro': '❌ Com Erro'
+                                    }
+                                    label = label_map.get(key, key)
+                                    st.metric(label, value)
+                            
+                            # Exibir listas em expanders
+                            for key, value in lists.items():
+                                if value:
+                                    label_map = {
+                                        'cards_movimentaveis': '🎯 Cards Movimentáveis',
+                                        'cards_bloqueados': '🔒 Cards Bloqueados',
+                                        'cards_movidos': '✅ Cards Movidos',
+                                        'cards_com_erro': '❌ Cards com Erro'
+                                    }
+                                    label = label_map.get(key, key)
+                                    with st.expander(f"{label} ({len(value)})"):
+                                        for card in value:
+                                            st.json(card)
+                            
+                            # Exibir outros valores
+                            for key, value in others.items():
+                                st.info(f"**{key}**: {value}")
                         else:
                             st.metric("Cards movidos", resultado)
                     else:
