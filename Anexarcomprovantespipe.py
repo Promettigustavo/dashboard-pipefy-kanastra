@@ -64,16 +64,68 @@ def log(msg, level='normal'):
 
 # Inicializar clientes Santander para todos os fundos (após definição da função log)
 santander_clients = {}
+
+def inicializar_clientes_santander():
+    """
+    Inicializa clientes Santander - compatível com Streamlit Cloud
+    Tenta primeiro usar credenciais_bancos local, depois tenta Streamlit secrets
+    """
+    global santander_clients
+    
+    try:
+        # Tentativa 1: Usar credenciais_bancos (ambiente local)
+        if HAS_CREDENCIAIS and criar_auth_para_todos_fundos:
+            log("🔐 Inicializando clientes Santander (credenciais locais)...")
+            auth_clients = criar_auth_para_todos_fundos()
+            
+            for fundo_id, auth in auth_clients.items():
+                santander_clients[fundo_id] = SantanderComprovantes(auth)
+            
+            log(f"✅ {len(santander_clients)} cliente(s) Santander inicializado(s)")
+            for fundo_id in santander_clients.keys():
+                log(f"   - {fundo_id}")
+            return
+    except Exception as e:
+        log(f"⚠️ Credenciais locais não disponíveis: {e}")
+    
+    # Tentativa 2: Usar Streamlit secrets
+    try:
+        import streamlit as st
+        if "santander_fundos" in st.secrets:
+            log("🔐 Inicializando clientes Santander (Streamlit secrets)...")
+            
+            # Importar função de criar auth do secrets
+            import sys
+            from pathlib import Path
+            
+            # Importar app_streamlit para usar a função criar_santander_auth_do_secrets
+            app_path = Path(__file__).parent / "app_streamlit.py"
+            if app_path.exists():
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("app_streamlit_module", app_path)
+                app_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(app_module)
+                
+                # Criar cliente para cada fundo nos secrets
+                for fundo_id in st.secrets["santander_fundos"].keys():
+                    if fundo_id not in ["cert_pem", "key_pem"]:
+                        try:
+                            auth = app_module.criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
+                            santander_clients[fundo_id] = SantanderComprovantes(auth)
+                        except Exception as e_fundo:
+                            log(f"⚠️ Erro ao criar cliente para {fundo_id}: {e_fundo}")
+                
+                log(f"✅ {len(santander_clients)} cliente(s) Santander inicializado(s) via secrets")
+                return
+    except Exception as e:
+        log(f"⚠️ Streamlit secrets não disponíveis: {e}")
+    
+    log("❌ Nenhum cliente Santander foi inicializado")
+    santander_clients = {}
+
+# Tentar inicializar na importação do módulo
 try:
-    log("🔐 Inicializando clientes Santander para todos os fundos...")
-    auth_clients = criar_auth_para_todos_fundos()
-    
-    for fundo_id, auth in auth_clients.items():
-        santander_clients[fundo_id] = SantanderComprovantes(auth)
-    
-    log(f"✅ {len(santander_clients)} cliente(s) Santander inicializado(s)")
-    for fundo_id in santander_clients.keys():
-        log(f"   - {fundo_id}")
+    inicializar_clientes_santander()
 except Exception as e:
     log(f"❌ Erro ao inicializar clientes Santander: {e}")
     santander_clients = {}
