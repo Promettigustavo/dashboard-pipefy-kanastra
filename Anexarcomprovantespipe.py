@@ -1719,7 +1719,33 @@ def processar_card_otimizado(card, data_busca_str, cache_fundos):
             # Buscar comprovantes apenas deste fundo
             try:
                 log(f"      🔍 Consultando fundo {fundo_id_atual}...", level='debug')
-                comprovantes = cliente.listar_comprovantes(data_busca_str, data_busca_str)
+                result = cliente.listar_comprovantes(data_busca_str, data_busca_str)
+                comprovantes_raw = result.get('paymentsReceipts', [])
+                
+                # Processar comprovantes (mesmo formato da função original)
+                comprovantes = []
+                for item in comprovantes_raw:
+                    payment = item.get('payment', {})
+                    
+                    # Obter amount e garantir que é float
+                    amount_raw = payment.get('paymentAmountInfo', {}).get('direct', {}).get('amount')
+                    try:
+                        amount_float = float(amount_raw) if amount_raw else 0.0
+                    except (ValueError, TypeError):
+                        amount_float = 0.0
+                    
+                    comprovante = {
+                        'payment_id': payment.get('paymentId'),
+                        'fundo_id': fundo_id_atual,
+                        'fundo_nome': cliente.auth.fundo_nome if hasattr(cliente, 'auth') else fundo_id_atual,
+                        'payee_name': payment.get('payee', {}).get('name'),
+                        'amount': amount_float,
+                        'value_date': payment.get('requestValueDate'),
+                        'raw_data': item,
+                        'cliente': cliente
+                    }
+                    comprovantes.append(comprovante)
+                
                 cache_fundos[fundo_id_atual] = comprovantes
                 log(f"      ✅ {len(comprovantes)} comprovante(s) encontrado(s)", level='debug')
             except Exception as e:
