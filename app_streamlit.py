@@ -432,9 +432,13 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     if "santander_fundos" in st.secrets:
         if "cert_pem" in st.secrets["santander_fundos"]:
             cert_pem = st.secrets["santander_fundos"]["cert_pem"]
+            # Converter \n literais em quebras de linha reais
+            cert_pem = cert_pem.replace('\\n', '\n')
             st.write(f"✅ cert_pem encontrado no secrets ({len(cert_pem)} bytes)")
         if "key_pem" in st.secrets["santander_fundos"]:
             key_pem = st.secrets["santander_fundos"]["key_pem"]
+            # Converter \n literais em quebras de linha reais
+            key_pem = key_pem.replace('\\n', '\n')
             st.write(f"✅ key_pem encontrado no secrets ({len(key_pem)} bytes)")
     
     # Se tiver certificados no secrets, criar arquivos temporários
