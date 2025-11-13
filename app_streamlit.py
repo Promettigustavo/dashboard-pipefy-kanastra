@@ -393,6 +393,106 @@ def get_santander_credentials():
         # Erro inesperado ao processar credenciais
         return {}, f"error: {str(e)}"
 
+def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
+    """
+    Cria objeto de autenticação Santander a partir do st.secrets
+    Retorna um objeto com as mesmas propriedades que SantanderAuth
+    
+    Args:
+        fundo_id: ID do fundo (ex: "AUTO_XI")
+        ambiente: "producao" ou "homologacao"
+    
+    Returns:
+        Objeto com propriedades: fundo_id, fundo_nome, fundo_cnpj, client_id, client_secret, 
+        cert_path, key_path, cert_base64, key_base64, ambiente, base_urls
+    """
+    import base64
+    import tempfile
+    from pathlib import Path
+    
+    # Obter credenciais
+    fundos, source = get_santander_credentials()
+    
+    if fundo_id not in fundos:
+        raise ValueError(f"Fundo {fundo_id} não encontrado nas credenciais")
+    
+    fundo = fundos[fundo_id]
+    
+    # Criar objeto de autenticação
+    class SantanderAuthFromSecrets:
+        def __init__(self):
+            self.fundo_id = fundo_id
+            self.fundo_nome = fundo.get("nome", "")
+            self.fundo_cnpj = fundo.get("cnpj", "")
+            self.client_id = fundo.get("client_id", "")
+            self.client_secret = fundo.get("client_secret", "")
+            self.ambiente = ambiente
+            
+            # URLs base da API
+            self.base_urls = {
+                "producao": {
+                    "token": "https://trust-open.api.santander.com.br/auth/oauth/v2/token",
+                    "api": "https://trust-open.api.santander.com.br"
+                },
+                "homologacao": {
+                    "token": "https://trust-open.api.preprod.cloud.gsnet.corp/auth/oauth/v2/token",
+                    "api": "https://trust-open.api.preprod.cloud.gsnet.corp"
+                }
+            }
+            
+            # Certificados - se tiver base64, criar arquivos temporários
+            if "cert_base64" in fundo and "key_base64" in fundo:
+                # Decodificar base64 e criar arquivos temporários
+                cert_content = base64.b64decode(fundo["cert_base64"])
+                key_content = base64.b64decode(fundo["key_base64"])
+                
+                # Criar arquivos temporários
+                temp_dir = Path(tempfile.gettempdir()) / "santander_certs"
+                temp_dir.mkdir(exist_ok=True)
+                
+                self.cert_path = str(temp_dir / f"{fundo_id}_cert.pem")
+                self.key_path = str(temp_dir / f"{fundo_id}_key.pem")
+                
+                # Escrever certificados
+                with open(self.cert_path, 'wb') as f:
+                    f.write(cert_content)
+                with open(self.key_path, 'wb') as f:
+                    f.write(key_content)
+                    
+            elif "cert_path" in fundo and "key_path" in fundo:
+                # Usar paths diretos (modo local)
+                self.cert_path = fundo["cert_path"]
+                self.key_path = fundo["key_path"]
+            else:
+                raise ValueError(f"Certificados não encontrados para fundo {fundo_id}")
+        
+        def obter_token(self):
+            """Obtém token de autenticação da API Santander"""
+            import requests
+            
+            token_url = self.base_urls[self.ambiente]["token"]
+            
+            data = {
+                'grant_type': 'client_credentials',
+                'client_id': self.client_id,
+                'client_secret': self.client_secret
+            }
+            
+            response = requests.post(
+                token_url,
+                data=data,
+                cert=(self.cert_path, self.key_path),
+                verify=True
+            )
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                return token_data.get('access_token')
+            else:
+                raise Exception(f"Erro ao obter token: {response.status_code} - {response.text}")
+    
+    return SantanderAuthFromSecrets()
+
 # Configuração do repositório GitHub
 try:
     from config_streamlit import GITHUB_REPO, GITHUB_BRANCH
@@ -1686,16 +1786,13 @@ elif aba_selecionada == "📎 Comprovantes":
                     st.error(f"❌ Módulo de busca não disponível: {error}")
                     st.info("💡 Certifique-se de que o arquivo `buscar_comprovantes_santander.py` está no projeto")
                 else:
-                    # Tentar carregar SantanderAuth (local ou criar versão simplificada)
-                    try:
-                        from credenciais_bancos import SantanderAuth
-                        usa_auth_local = True
-                    except ImportError:
-                        st.warning("⚠️ Módulo credenciais_bancos não disponível (ambiente cloud). A funcionalidade de busca de comprovantes requer implementação específica.")
-                        st.info("💡 Esta funcionalidade está otimizada para execução local com certificados. Configure as credenciais localmente para usar esta feature.")
-                        usa_auth_local = False
+                    # Verificar se temos credenciais disponíveis
+                    fundos_creds, source = get_santander_credentials()
                     
-                    if usa_auth_local:
+                    if not fundos_creds or source == "none":
+                        st.error("❌ Credenciais Santander não configuradas")
+                        st.info("💡 Configure as credenciais no arquivo `credenciais_bancos.py` (local) ou em `secrets.toml` (cloud)")
+                    else:
                         # Processar cada fundo
                         for idx, fundo_id in enumerate(fundos_selecionados, 1):
                             progress_bar.progress(idx / (total_fundos + 1))
@@ -1704,8 +1801,16 @@ elif aba_selecionada == "📎 Comprovantes":
                             try:
                                 # Criar cliente Santander para o fundo
                                 if hasattr(module_buscar, 'SantanderComprovantes'):
-                                    # Criar autenticação
-                                    auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
+                                    # Tentar criar autenticação
+                                    try:
+                                        # Tentar import local primeiro
+                                        from credenciais_bancos import SantanderAuth
+                                        auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
+                                    except ImportError:
+                                        # Usar função helper com secrets
+                                        auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
+                                    
+                                    # Criar cliente de comprovantes
                                     cliente = module_buscar.SantanderComprovantes(auth)
                                     
                                     # Buscar comprovantes
