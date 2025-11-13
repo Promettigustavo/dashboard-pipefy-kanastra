@@ -442,9 +442,16 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             
             # Certificados - se tiver base64, criar arquivos temporários
             if "cert_base64" in fundo and "key_base64" in fundo:
+                # Limpar base64 (remover espaços, quebras de linha, etc)
+                cert_b64 = fundo["cert_base64"].strip().replace(" ", "").replace("\n", "").replace("\r", "")
+                key_b64 = fundo["key_base64"].strip().replace(" ", "").replace("\n", "").replace("\r", "")
+                
                 # Decodificar base64 e criar arquivos temporários
-                cert_content = base64.b64decode(fundo["cert_base64"])
-                key_content = base64.b64decode(fundo["key_base64"])
+                try:
+                    cert_content = base64.b64decode(cert_b64)
+                    key_content = base64.b64decode(key_b64)
+                except Exception as e:
+                    raise ValueError(f"Erro ao decodificar certificados base64 do fundo {fundo_id}: {str(e)}")
                 
                 # Criar arquivos temporários
                 temp_dir = Path(tempfile.gettempdir()) / "santander_certs"
