@@ -70,10 +70,15 @@ class SantanderComprovantes:
         Returns:
             Dicionário com headers incluindo token de autenticação
         """
+        print(f"DEBUG _get_headers: Verificando validade do token...")
         # Garante que temos um token válido
         if not self.auth._is_token_valid():
             logger.info("Token expirado, obtendo novo token...")
+            print(f"DEBUG: Token inválido/expirado, chamando obter_token_acesso...")
             self.auth.obter_token_acesso()
+            print(f"DEBUG: Token obtido com sucesso")
+        else:
+            print(f"DEBUG: Token ainda válido")
         
         token = self.auth.token_data['access_token']
         
@@ -95,18 +100,30 @@ class SantanderComprovantes:
         Returns:
             Dados dos comprovantes em formato JSON
         """
+        print(f"DEBUG listar_comprovantes: Iniciando para período {data_inicio} a {data_fim}")
+        print(f"DEBUG: self.auth.fundo_id = {self.auth.fundo_id}")
+        print(f"DEBUG: self.api_base = {self.api_base}")
+        
         endpoint = "/consult_payment_receipts/v1/payment_receipts"
         url = f"{self.api_base}{endpoint}"
+        
+        print(f"DEBUG: URL completa = {url}")
         
         params = {
             "start_date": data_inicio,
             "end_date": data_fim
         }
         
+        print(f"DEBUG: Obtendo headers...")
         headers = self._get_headers()
+        print(f"DEBUG: Headers obtidos com sucesso")
+        
+        print(f"DEBUG: Obtendo certificados...")
         cert_tuple = self.auth._get_cert_tuple()
+        print(f"DEBUG: Certificados obtidos: {cert_tuple}")
         
         try:
+            print(f"DEBUG: Fazendo requisição GET para {url}")
             logger.info(f"Listando comprovantes de {data_inicio} até {data_fim}...")
             
             if self.auth.fundo_id:

@@ -1937,22 +1937,40 @@ elif aba_selecionada == "📎 Comprovantes":
                                 # Criar cliente Santander para o fundo
                                 if hasattr(module_buscar, 'SantanderComprovantes'):
                                     # Tentar criar autenticação
+                                    auth = None
                                     try:
                                         # Tentar import local primeiro
                                         from credenciais_bancos import SantanderAuth
+                                        print(f"DEBUG: Criando auth via SantanderAuth.criar_por_fundo para {fundo_id}")
                                         auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
+                                        print(f"DEBUG: Auth criado com sucesso via módulo local")
                                     except ImportError:
                                         # Usar função helper com secrets
+                                        print(f"DEBUG: Import falhou, usando criar_santander_auth_do_secrets para {fundo_id}")
                                         auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
+                                        print(f"DEBUG: Auth criado com sucesso via secrets")
+                                    except Exception as e_auth_local:
+                                        # Se falhar no modo local, tentar secrets
+                                        print(f"DEBUG: Erro ao criar auth local: {e_auth_local}")
+                                        print(f"DEBUG: Tentando criar auth via secrets...")
+                                        auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
+                                        print(f"DEBUG: Auth criado com sucesso via secrets (fallback)")
+                                    
+                                    if not auth:
+                                        raise ValueError(f"Não foi possível criar autenticação para {fundo_id}")
                                     
                                     # Criar cliente de comprovantes
+                                    print(f"DEBUG: Criando SantanderComprovantes para {fundo_id}")
                                     cliente = module_buscar.SantanderComprovantes(auth)
+                                    print(f"DEBUG: Cliente criado com sucesso")
                                     
                                     # Buscar comprovantes
+                                    print(f"DEBUG: Listando comprovantes de {data_busca_str}")
                                     comprovantes = cliente.listar_comprovantes(
                                         data_inicio=data_busca_str,
                                         data_fim=data_busca_str
                                     )
+                                    print(f"DEBUG: Listagem concluída")
                                     
                                     if comprovantes:
                                         qtd = len(comprovantes.get('receipts', []))
