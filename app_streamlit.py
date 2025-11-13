@@ -188,14 +188,25 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     st.markdown("---")
     
+    # Seleção de aba no sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📑 Navegação")
+    aba_selecionada = st.sidebar.radio(
+        "Selecione a aba:",
+        options=["💰 Liquidação", "🏦 CETIP", "📎 Comprovantes"],
+        label_visibility="collapsed"
+    )
+    
+    st.sidebar.markdown("---")
+    
     # Status dos módulos
-    with st.expander("📊 Status dos Módulos", expanded=False):
+    with st.sidebar.expander("📊 Status dos Módulos", expanded=False):
         available_modules = get_available_modules()
         st.info(f"📦 {len(available_modules)} módulos disponíveis")
         st.caption("Módulos serão carregados sob demanda")
     
     # Status das bases de dados
-    with st.expander("💾 Bases de Dados", expanded=True):
+    with st.sidebar.expander("💾 Bases de Dados", expanded=False):
         # Checkbox para auto-download
         auto_download = st.checkbox(
             "Auto-download do GitHub", 
@@ -219,22 +230,87 @@ with st.sidebar:
             elif "❌" in msg:
                 st.warning(msg)
 
-# ===== TABS PRINCIPAIS =====
-tab_liquidacao, tab_cetip, tab_comprovantes = st.tabs([
-    "💰 Liquidação",
-    "🏦 CETIP",
-    "📎 Comprovantes"
-])
-
 # ===== ABA LIQUIDAÇÃO =====
-with tab_liquidacao:
-    st.header("Processamento de Liquidação")
+if aba_selecionada == "💰 Liquidação":
+    st.header("💰 Processamento de Liquidação")
     
     # Verificar se bases existem
     bases, msgs = verificar_bases_dados(auto_download=True)
     
     if not all(bases.values()):
         st.warning("⚠️ Bases de dados não encontradas. Verifique a sidebar.")
+    
+    # ===== BOTÕES DE MOVER CARDS (TOPO) =====
+    st.markdown("### 🔄 Movimentação de Cards")
+    col_move1, col_move2 = st.columns(2)
+    
+    with col_move1:
+        if st.button(
+            "📊 Mover Cards - Análise",
+            type="secondary",
+            key="btn_mover_analise_topo",
+            use_container_width=True,
+            help="Move cards para a fase de análise"
+        ):
+            with st.spinner("Movendo cards para análise..."):
+                try:
+                    # Importar sem cache para pegar versão atualizada
+                    import importlib
+                    import sys
+                    if 'movecards' in sys.modules:
+                        del sys.modules['movecards']
+                    import movecards
+                    
+                    st.info("🔄 Executando movimentação para análise...")
+                    resultado = movecards.main()
+                    
+                    if resultado is not None:
+                        st.success("✅ Cards movidos para análise com sucesso!")
+                        if isinstance(resultado, dict):
+                            for key, value in resultado.items():
+                                st.metric(key, value)
+                        else:
+                            st.metric("Cards movidos", resultado)
+                    else:
+                        st.warning("⚠️ Nenhum card foi movido")
+                except Exception as e:
+                    st.error(f"❌ Erro ao mover cards: {str(e)}")
+                    st.code(traceback.format_exc())
+    
+    with col_move2:
+        if st.button(
+            "✅ Mover Cards - 2ª Aprovação",
+            type="secondary",
+            key="btn_mover_2a_aprovacao_topo",
+            use_container_width=True,
+            help="Move cards para a 2ª aprovação"
+        ):
+            with st.spinner("Movendo cards para 2ª aprovação..."):
+                try:
+                    # Importar sem cache para pegar versão atualizada
+                    import importlib
+                    import sys
+                    if 'mover_2a_aprovacao' in sys.modules:
+                        del sys.modules['mover_2a_aprovacao']
+                    import mover_2a_aprovacao
+                    
+                    st.info("🔄 Executando movimentação para 2ª aprovação...")
+                    resultado = mover_2a_aprovacao.main()
+                    
+                    if resultado is not None:
+                        st.success("✅ Cards movidos para 2ª aprovação com sucesso!")
+                        if isinstance(resultado, dict):
+                            for key, value in resultado.items():
+                                st.metric(key, value)
+                        else:
+                            st.metric("Cards movidos", resultado)
+                    else:
+                        st.warning("⚠️ Nenhum card foi movido")
+                except Exception as e:
+                    st.error(f"❌ Erro ao mover cards: {str(e)}")
+                    st.code(traceback.format_exc())
+    
+    st.markdown("---")
     
     # Seletor de modo: Manual (arquivo) ou Automático (API)
     modo_processamento = st.radio(
@@ -473,10 +549,19 @@ with tab_liquidacao:
                     st.warning(f"⚠️ Arquivo não encontrado: {os.path.basename(arquivo_path)}")
                     st.caption(f"Caminho procurado: {arquivo_path}")
                     
-                    # Tentar encontrar arquivos .xlsx recentes no diretório
+                    # Tentar encontrar arquivos .xlsx recentes no diretório (excluindo bases de dados)
                     try:
+                        # Arquivos a ignorar (bases de dados)
+                        arquivos_ignorar = [
+                            'Basedadosfundos.xlsx',
+                            'Basedadosfundos_Arbi.xlsx',
+                            'ExtratosAutomaticos.xlsx',
+                            'ModeloRazaodeInvestidores.xlsx'
+                        ]
+                        
                         arquivos_xlsx = sorted(
-                            [f for f in os.listdir('.') if f.endswith('.xlsx')],
+                            [f for f in os.listdir('.') 
+                             if f.endswith('.xlsx') and f not in arquivos_ignorar],
                             key=lambda x: os.path.getmtime(x),
                             reverse=True
                         )
@@ -497,77 +582,6 @@ with tab_liquidacao:
             else:
                 st.info("💡 Execute a automação para gerar o arquivo")
         
-        # ===== BOTÕES DE MOVER CARDS =====
-        st.markdown("---")
-        st.markdown("### 📋 Movimentação de Cards")
-        
-        col_move1, col_move2 = st.columns(2)
-        
-        with col_move1:
-            if st.button(
-                "📊 Mover Cards - Análise",
-                type="secondary",
-                key="btn_mover_analise",
-                use_container_width=True,
-                help="Move cards para a fase de análise"
-            ):
-                with st.spinner("Movendo cards para análise..."):
-                    try:
-                        # Importar sem cache para pegar versão atualizada
-                        import importlib
-                        import sys
-                        if 'movecards' in sys.modules:
-                            del sys.modules['movecards']
-                        import movecards
-                        
-                        st.info("🔄 Executando movimentação para análise...")
-                        resultado = movecards.main()
-                        
-                        if resultado is not None:
-                            st.success("✅ Cards movidos para análise com sucesso!")
-                            if isinstance(resultado, dict):
-                                for key, value in resultado.items():
-                                    st.metric(key, value)
-                            else:
-                                st.metric("Cards movidos", resultado)
-                        else:
-                            st.warning("⚠️ Nenhum card foi movido")
-                    except Exception as e:
-                        st.error(f"❌ Erro ao mover cards: {str(e)}")
-                        st.code(traceback.format_exc())
-        
-        with col_move2:
-            if st.button(
-                "✅ Mover Cards - 2ª Aprovação",
-                type="secondary",
-                key="btn_mover_2a_aprovacao",
-                use_container_width=True,
-                help="Move cards para a 2ª aprovação"
-            ):
-                with st.spinner("Movendo cards para 2ª aprovação..."):
-                    try:
-                        # Importar sem cache para pegar versão atualizada
-                        import importlib
-                        import sys
-                        if 'mover_2a_aprovacao' in sys.modules:
-                            del sys.modules['mover_2a_aprovacao']
-                        import mover_2a_aprovacao
-                        
-                        st.info("🔄 Executando movimentação para 2ª aprovação...")
-                        resultado = mover_2a_aprovacao.main()
-                        
-                        if resultado is not None:
-                            st.success("✅ Cards movidos para 2ª aprovação com sucesso!")
-                            if isinstance(resultado, dict):
-                                for key, value in resultado.items():
-                                    st.metric(key, value)
-                            else:
-                                st.metric("Cards movidos", resultado)
-                        else:
-                            st.warning("⚠️ Nenhum card foi movido")
-                    except Exception as e:
-                        st.error(f"❌ Erro ao mover cards: {str(e)}")
-                        st.code(traceback.format_exc())
     
     # ===== MODO MANUAL (COM ARQUIVO) =====
     else:
@@ -755,10 +769,10 @@ with tab_liquidacao:
             st.json(st.session_state['ultimo_resultado'])
 
 # ===== ABA CETIP =====
-with tab_cetip:
-    st.header("CETIP - Integração")
+elif aba_selecionada == "🏦 CETIP":
+    st.header("🏦 CETIP - Integração")
     
-    st.markdown("### 🏦 Processamento CETIP")
+    st.markdown("### Processamento CETIP")
     
     # Verificar se módulo existe
     module_integrador, error_integrador = get_module('integrador')
@@ -902,10 +916,10 @@ with tab_cetip:
                 st.json(st.session_state['ultimo_resultado_cetip'])
 
 # ===== ABA COMPROVANTES =====
-with tab_comprovantes:
-    st.header("Anexar Comprovantes Santander")
+elif aba_selecionada == "📎 Comprovantes":
+    st.header("📎 Anexar Comprovantes Santander")
     
-    st.markdown("### 📎 Anexação Automática de Comprovantes")
+    st.markdown("### Anexação Automática de Comprovantes")
     
     # Layout
     col1, col2 = st.columns([2, 1])
