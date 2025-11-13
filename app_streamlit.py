@@ -892,15 +892,12 @@ if aba_selecionada == "💰 Liquidação":
                             
                             metrics = {}
                             lists = {}
-                            others = {}
                             
                             for key, value in resultado.items():
                                 if isinstance(value, (int, float)):
                                     metrics[key] = value
                                 elif isinstance(value, list):
                                     lists[key] = value
-                                else:
-                                    others[key] = value
                             
                             # Exibir métricas numéricas em colunas
                             cols = [col1, col2, col3, col4]
@@ -931,10 +928,6 @@ if aba_selecionada == "💰 Liquidação":
                                     with st.expander(f"{label} ({len(value)})"):
                                         for card in value:
                                             st.json(card)
-                            
-                            # Exibir outros valores
-                            for key, value in others.items():
-                                st.info(f"**{key}**: {value}")
                         else:
                             st.metric("Cards movidos", resultado)
                     else:
@@ -972,15 +965,12 @@ if aba_selecionada == "💰 Liquidação":
                             
                             metrics = {}
                             lists = {}
-                            others = {}
                             
                             for key, value in resultado.items():
                                 if isinstance(value, (int, float)):
                                     metrics[key] = value
                                 elif isinstance(value, list):
                                     lists[key] = value
-                                else:
-                                    others[key] = value
                             
                             # Exibir métricas numéricas em colunas
                             cols = [col1, col2, col3, col4]
@@ -1011,10 +1001,6 @@ if aba_selecionada == "💰 Liquidação":
                                     with st.expander(f"{label} ({len(value)})"):
                                         for card in value:
                                             st.json(card)
-                            
-                            # Exibir outros valores
-                            for key, value in others.items():
-                                st.info(f"**{key}**: {value}")
                         else:
                             st.metric("Cards movidos", resultado)
                     else:
