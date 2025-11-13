@@ -24,10 +24,15 @@ if sys.platform == 'win32':
 try:
     from credenciais_bancos import SantanderAuth, criar_auth_para_todos_fundos, listar_fundos_configurados
     from buscar_comprovantes_santander import SantanderComprovantes
+    HAS_CREDENCIAIS = True
 except ImportError as e:
-    print(f"⚠️ Erro ao importar módulos: {e}")
-    print("   Certifique-se de que credenciais_bancos.py e buscar_comprovantes_santander.py existem")
-    sys.exit(1)
+    # Em ambiente cloud, não temos credenciais_bancos - isso é esperado
+    HAS_CREDENCIAIS = False
+    SantanderAuth = None
+    criar_auth_para_todos_fundos = None
+    listar_fundos_configurados = None
+    SantanderComprovantes = None
+    # Não fazer sys.exit() para permitir que o módulo seja importado no Streamlit Cloud
 
 # ==================== CONFIGURAÇÃO ====================
 

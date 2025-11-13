@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import logging
 import time
-from credenciais_bancos import SantanderAuth
+
+# Import condicional para compatibilidade com Streamlit Cloud
+try:
+    from credenciais_bancos import SantanderAuth
+    HAS_CREDENCIAIS = True
+except ImportError:
+    HAS_CREDENCIAIS = False
+    SantanderAuth = None  # Placeholder para evitar erros de referência
 
 # Configuração de logging
 logging.basicConfig(
@@ -26,7 +33,7 @@ class SantanderComprovantes:
     Suporta múltiplos fundos
     """
     
-    def __init__(self, santander_auth: SantanderAuth):
+    def __init__(self, santander_auth):
         """
         Inicializa o cliente de comprovantes
         
