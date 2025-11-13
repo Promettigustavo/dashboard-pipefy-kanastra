@@ -232,7 +232,18 @@ with st.sidebar:
 
 # ===== ABA LIQUIDAÇÃO =====
 if aba_selecionada == "💰 Liquidação":
-    st.header("💰 Processamento de Liquidação")
+    # Header com estilo
+    st.markdown("""
+        <div style='background: linear-gradient(90deg, #00B37E 0%, #00875F 100%); 
+                    padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;'>
+            <h1 style='color: white; margin: 0; font-size: 2rem;'>
+                💰 Processamento de Liquidação
+            </h1>
+            <p style='color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0; font-size: 1rem;'>
+                Automatize o processamento de liquidações financeiras
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Verificar se bases existem
     bases, msgs = verificar_bases_dados(auto_download=True)
@@ -241,7 +252,15 @@ if aba_selecionada == "💰 Liquidação":
         st.warning("⚠️ Bases de dados não encontradas. Verifique a sidebar.")
     
     # ===== BOTÕES DE MOVER CARDS (TOPO) =====
-    st.markdown("### 🔄 Movimentação de Cards")
+    st.markdown("""
+        <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #00B37E;'>
+            <h3 style='margin: 0; color: #1a1a1a;'>🔄 Movimentação de Cards</h3>
+            <p style='margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;'>
+                Mova cards entre fases do pipeline
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
     col_move1, col_move2 = st.columns(2)
     
     with col_move1:
@@ -313,11 +332,20 @@ if aba_selecionada == "💰 Liquidação":
     st.markdown("---")
     
     # Seletor de modo: Manual (arquivo) ou Automático (API)
+    st.markdown("""
+        <div style='background-color: #f8f9fa; padding: 0.75rem; border-radius: 8px; margin-bottom: 1rem;'>
+            <p style='margin: 0; color: #666; font-size: 0.9rem; font-weight: 600;'>
+                MODO DE PROCESSAMENTO
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
     modo_processamento = st.radio(
         "Modo de processamento",
         options=["🤖 Automático (via API Pipefy)", "📁 Manual (com arquivo)"],
         horizontal=True,
-        key="modo_liquidacao"
+        key="modo_liquidacao",
+        label_visibility="collapsed"
     )
     
     st.markdown("---")
@@ -733,9 +761,18 @@ if aba_selecionada == "💰 Liquidação":
 
 # ===== ABA CETIP =====
 elif aba_selecionada == "🏦 CETIP":
-    st.header("🏦 CETIP - Integração")
-    
-    st.markdown("### Processamento CETIP")
+    # Header com estilo
+    st.markdown("""
+        <div style='background: linear-gradient(90deg, #0066CC 0%, #0052A3 100%); 
+                    padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;'>
+            <h1 style='color: white; margin: 0; font-size: 2rem;'>
+                🏦 CETIP - Integração
+            </h1>
+            <p style='color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0; font-size: 1rem;'>
+                Processamento e integração com sistema CETIP
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Verificar se módulo existe
     module_integrador, error_integrador = get_module('integrador')
@@ -880,9 +917,18 @@ elif aba_selecionada == "🏦 CETIP":
 
 # ===== ABA COMPROVANTES =====
 elif aba_selecionada == "📎 Comprovantes":
-    st.header("📎 Anexar Comprovantes Santander")
-    
-    st.markdown("### Anexação Automática de Comprovantes")
+    # Header com estilo
+    st.markdown("""
+        <div style='background: linear-gradient(90deg, #DC2626 0%, #B91C1C 100%); 
+                    padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;'>
+            <h1 style='color: white; margin: 0; font-size: 2rem;'>
+                📎 Anexar Comprovantes Santander
+            </h1>
+            <p style='color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0; font-size: 1rem;'>
+                Anexação automática de comprovantes via API Santander
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
     
     # Layout
     col1, col2 = st.columns([2, 1])
