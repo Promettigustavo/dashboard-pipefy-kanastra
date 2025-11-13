@@ -7,6 +7,8 @@ kanastra-live-*.json
 *.pfx
 *.p12
 config_streamlit.py
+certificados_base64_BACKUP.txt
+converter_certificados.py
 
 # Tokens e variáveis de ambiente
 .env
