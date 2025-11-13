@@ -464,45 +464,47 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             """Obtém token de autenticação da API Santander"""
             import requests
             from datetime import datetime, timedelta
-            import logging
+            from pathlib import Path
+            
+            st.write(f"🔐 Obtendo token de autenticação...")
             
             # Verificar se já tem token válido
             if hasattr(self, '_token') and hasattr(self, '_token_expiry'):
                 if datetime.now() < self._token_expiry:
+                    st.write(f"✅ Token ainda válido")
                     return self._token
             
             token_url = self.base_urls[self.ambiente]["token"]
-            
-            # Log detalhado para debug
-            print(f"DEBUG: Obtendo token para fundo {self.fundo_id}")
-            print(f"DEBUG: URL: {token_url}")
-            print(f"DEBUG: Client ID: {self.client_id[:20]}...")
-            print(f"DEBUG: Cert path: {self.cert_path}")
-            print(f"DEBUG: Key path: {self.key_path}")
-            print(f"DEBUG: Cert exists: {Path(self.cert_path).exists()}")
-            print(f"DEBUG: Key exists: {Path(self.key_path).exists()}")
+            st.write(f"🌐 URL: {token_url}")
+            st.write(f"🆔 Client ID: {self.client_id[:20]}...")
             
             # Verificar se certificados existem
+            st.write(f"🔍 Verificando existência dos certificados...")
+            st.write(f"  Cert: {Path(self.cert_path).exists()}")
+            st.write(f"  Key: {Path(self.key_path).exists()}")
+            
             if not Path(self.cert_path).exists():
                 raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
             if not Path(self.key_path).exists():
                 raise FileNotFoundError(f"Chave privada não encontrada: {self.key_path}")
             
             # Ler e validar formato dos certificados
+            st.write(f"📖 Lendo e validando certificados...")
             try:
                 with open(self.cert_path, 'r') as f:
                     cert_content = f.read()
                     if not cert_content.startswith('-----BEGIN CERTIFICATE-----'):
                         raise ValueError(f"Certificado inválido: não começa com -----BEGIN CERTIFICATE-----")
-                    print(f"DEBUG: Certificado OK ({len(cert_content)} bytes)")
+                    st.write(f"  ✅ Certificado OK ({len(cert_content)} bytes)")
                     
                 with open(self.key_path, 'r') as f:
                     key_content = f.read()
                     if not (key_content.startswith('-----BEGIN RSA PRIVATE KEY-----') or 
                            key_content.startswith('-----BEGIN PRIVATE KEY-----')):
                         raise ValueError(f"Chave privada inválida: formato não reconhecido")
-                    print(f"DEBUG: Chave privada OK ({len(key_content)} bytes)")
+                    st.write(f"  ✅ Chave privada OK ({len(key_content)} bytes)")
             except Exception as e:
+                st.error(f"❌ Erro ao ler certificados: {str(e)}")
                 raise ValueError(f"Erro ao ler certificados: {str(e)}")
             
             data = {
@@ -510,6 +512,11 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 'client_id': self.client_id,
                 'client_secret': self.client_secret
             }
+            
+            st.write(f"🚀 Fazendo requisição POST para obter token...")
+            st.write(f"  URL: {token_url}")
+            st.write(f"  Cert: {self.cert_path}")
+            st.write(f"  Key: {self.key_path}")
             
             try:
                 response = requests.post(
@@ -519,9 +526,12 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                     verify=True,
                     timeout=30
                 )
+                st.write(f"✅ Requisição bem-sucedida! Status: {response.status_code}")
             except requests.exceptions.SSLError as e:
                 # Log detalhado do erro SSL
-                print(f"ERROR SSL: {str(e)}")
+                st.error(f"❌ ERRO SSL: {str(e)}")
+                st.error(f"Tipo: {type(e)}")
+                st.error(f"Args: {e.args}")
                 raise Exception(f"Erro SSL ao conectar com Santander: {str(e)}. Verifique se os certificados estão corretos e no formato PEM válido.")
             
             if response.status_code == 200:
@@ -544,6 +554,11 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             if not hasattr(self, '_token') or not hasattr(self, '_token_expiry'):
                 return False
             return datetime.now() < self._token_expiry
+        
+        def _get_cert_tuple(self):
+            """Retorna tupla (cert_path, key_path) para uso no requests"""
+            st.write(f"📜 Retornando certificados: ({self.cert_path}, {self.key_path})")
+            return (self.cert_path, self.key_path)
     
     return SantanderAuthFromSecrets()
 
