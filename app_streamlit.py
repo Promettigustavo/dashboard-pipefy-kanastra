@@ -2226,6 +2226,13 @@ elif aba_selecionada == "📎 Comprovantes":
                 
                 st.info(f"📅 Processando cards com data de referência: **{data_busca_str}**")
                 
+                # Limpar cache dos módulos antes de importar (força reload com código atualizado)
+                st.write("🔍 DEBUG: Limpando cache de módulos...")
+                if 'Anexarcomprovantespipe' in st.session_state:
+                    del st.session_state['Anexarcomprovantespipe']
+                if 'Anexarcomprovantespipetaxas' in st.session_state:
+                    del st.session_state['Anexarcomprovantespipetaxas']
+                
                 # Criar clientes Santander para todos os fundos configurados
                 st.write("🔍 DEBUG: Criando clientes Santander...")
                 clientes_santander = {}

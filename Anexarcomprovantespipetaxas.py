@@ -124,12 +124,9 @@ def inicializar_clientes_santander():
     log("❌ Nenhum cliente Santander foi inicializado")
     santander_clients = {}
 
-# Tentar inicializar na importação do módulo
-try:
-    inicializar_clientes_santander()
-except Exception as e:
-    log(f"❌ Erro ao inicializar clientes Santander: {e}")
-    santander_clients = {}
+# NÃO inicializar automaticamente na importação para evitar erros circulares
+# Os clientes serão passados externamente via parâmetro clientes_santander
+# em processar_todos_cards()
 
 
 def fazer_requisicao_graphql(query, variables=None):
