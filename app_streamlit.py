@@ -1647,18 +1647,7 @@ elif aba_selecionada == "📎 Comprovantes":
             help="Segure Ctrl/Cmd para seleção múltipla"
         )
         
-        # Botões de seleção rápida
-        col_sel1, col_sel2 = st.columns(2)
-        with col_sel1:
-            if st.button("✓ Todos", key="selecionar_todos_fundos", use_container_width=True):
-                st.session_state['fundos_selecionados_comp'] = fundos_filtrados
-                st.rerun()
-        with col_sel2:
-            if st.button("✕ Limpar", key="limpar_fundos", use_container_width=True):
-                st.session_state['fundos_selecionados_comp'] = []
-                st.rerun()
-        
-        st.caption(f"� {len(fundos_selecionados)} de {len(fundos_filtrados)} fundos selecionados")
+        st.caption(f"📊 {len(fundos_selecionados)} de {len(fundos_filtrados)} fundos selecionados")
         
         st.markdown("---")
         
