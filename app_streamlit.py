@@ -1500,171 +1500,268 @@ elif aba_selecionada == "📎 Comprovantes":
                 📎 Anexar Comprovantes Santander
             </h1>
             <p style='color: rgba(255,255,255,0.9); margin: 0.5rem 0 0 0; font-size: 1rem;'>
-                Anexação automática de comprovantes via API Santander
+                Busque e anexe comprovantes automaticamente via API Santander
             </p>
         </div>
     """, unsafe_allow_html=True)
     
-    # Layout
-    col1, col2 = st.columns([2, 1])
+    st.info("💡 Busque comprovantes da API Santander e anexe automaticamente aos cards do Pipefy com matching inteligente por valor e beneficiário")
     
-    with col1:
-        st.markdown("### 📁 Arquivo de Entrada")
-        
-        # Upload de arquivo
-        arquivo_comprovantes = st.file_uploader(
-            "Selecione o arquivo de cards (opcional)",
-            type=['xlsx', 'xls', 'csv', 'json'],
-            key="arquivo_comprovantes",
-            help="Deixe em branco para buscar automaticamente cards pendentes do Pipefy"
-        )
-        
-        # Preview
-        if arquivo_comprovantes:
-            try:
-                if arquivo_comprovantes.name.endswith('.json'):
-                    content = json.loads(arquivo_comprovantes.getvalue().decode('utf-8'))
-                    with st.expander("👁️ Preview do arquivo", expanded=False):
-                        st.json(content if isinstance(content, dict) else content[:5])
-                        st.caption(f"📄 {len(content) if isinstance(content, list) else 'N/A'} registros")
-                else:
-                    df_preview = pd.read_excel(arquivo_comprovantes) if arquivo_comprovantes.name.endswith(('.xlsx', '.xls')) else pd.read_csv(arquivo_comprovantes)
-                    
-                    with st.expander("👁️ Preview do arquivo", expanded=False):
-                        st.dataframe(df_preview.head(10), use_container_width=True)
-                        st.caption(f"📊 {len(df_preview)} linhas × {len(df_preview.columns)} colunas")
-            except Exception as e:
-                st.warning(f"Não foi possível visualizar o arquivo: {str(e)}")
+    # Layout em 2 colunas: Buscar + Anexar
+    col_buscar, col_anexar = st.columns([1, 1])
     
-    with col2:
-        st.markdown("### ⚙️ Configurações")
+    # ===== COLUNA ESQUERDA: BUSCAR COMPROVANTES =====
+    with col_buscar:
+        st.markdown("""
+            <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #00875F;'>
+                <h4 style='margin: 0 0 0.75rem 0; color: #00875F;'>🔍 Buscar Comprovantes (API Santander)</h4>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Tipo de pipe
-        tipo_pipe = st.selectbox(
-            "Tipo de pipe",
-            options=[
-                "Liquidação",
-                "Taxas"
-            ],
-            key="tipo_pipe_comp"
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Data de busca
+        data_busca_santander = st.date_input(
+            "📅 Data de Busca",
+            value=dt.date.today(),
+            help="Data para buscar comprovantes na API Santander",
+            key="data_busca_santander"
         )
         
-        # Período de busca
-        periodo_dias = st.number_input(
-            "Período (dias)",
-            min_value=1,
-            max_value=30,
-            value=7,
-            help="Buscar comprovantes dos últimos N dias"
-        )
-        
-        # Modo de anexação
-        modo_anexacao = st.radio(
-            "Modo",
-            options=["Automático", "Manual"],
-            help="Automático: busca cards pendentes do Pipefy. Manual: usa arquivo enviado"
+        # Pasta de destino
+        pasta_destino = st.text_input(
+            "📁 Pasta de Destino",
+            value=str(Path.cwd() / "Comprovantes"),
+            help="Pasta onde os PDFs serão salvos",
+            key="pasta_destino_comp"
         )
         
         st.markdown("---")
-        st.info(f"📋 Pipe: {tipo_pipe}")
-    
-    st.markdown("---")
-    
-    # Execução
-    col_exec1, col_exec2 = st.columns([1, 1])
-    
-    with col_exec1:
-        # Botão executar
-        executar_disabled = modo_anexacao == "Manual" and not arquivo_comprovantes
         
+        # Seleção de fundos Santander
+        st.markdown("**💼 Fundos Santander**")
+        
+        # Importar lista de fundos
+        try:
+            from credenciais_bancos import SANTANDER_FUNDOS
+            fundos_disponiveis = sorted(list(SANTANDER_FUNDOS.keys()))
+        except Exception:
+            fundos_disponiveis = []
+            st.warning("⚠️ Não foi possível carregar lista de fundos Santander")
+        
+        # Campo de busca/filtro
+        filtro_fundo = st.text_input(
+            "🔍 Filtrar fundos",
+            placeholder="Digite para filtrar...",
+            key="filtro_fundos_comp"
+        )
+        
+        # Filtrar fundos se houver texto
+        if filtro_fundo:
+            fundos_filtrados = [f for f in fundos_disponiveis if filtro_fundo.lower() in f.lower()]
+        else:
+            fundos_filtrados = fundos_disponiveis
+        
+        # Multiselect para seleção de fundos
+        fundos_selecionados = st.multiselect(
+            "Selecione os fundos",
+            options=fundos_filtrados,
+            default=fundos_filtrados[:3] if len(fundos_filtrados) > 0 else [],
+            key="fundos_selecionados_comp",
+            help="Segure Ctrl/Cmd para seleção múltipla"
+        )
+        
+        # Botões de seleção rápida
+        col_sel1, col_sel2 = st.columns(2)
+        with col_sel1:
+            if st.button("✓ Todos", key="selecionar_todos_fundos", use_container_width=True):
+                st.session_state['fundos_selecionados_comp'] = fundos_filtrados
+                st.rerun()
+        with col_sel2:
+            if st.button("✕ Limpar", key="limpar_fundos", use_container_width=True):
+                st.session_state['fundos_selecionados_comp'] = []
+                st.rerun()
+        
+        st.caption(f"� {len(fundos_selecionados)} de {len(fundos_filtrados)} fundos selecionados")
+        
+        st.markdown("---")
+        
+        # Botão Buscar Comprovantes
+        if st.button(
+            "🔍 Buscar Comprovantes via API",
+            type="primary",
+            use_container_width=True,
+            key="btn_buscar_santander",
+            disabled=len(fundos_selecionados) == 0
+        ):
+            st.warning("⚠️ Funcionalidade de busca via API Santander em desenvolvimento")
+            st.info(f"📅 Data: {data_busca_santander.strftime('%Y-%m-%d')}")
+            st.info(f"💼 Fundos: {len(fundos_selecionados)}")
+            st.info(f"📁 Destino: {pasta_destino}")
+    
+    # ===== COLUNA DIREITA: ANEXAR NO PIPEFY =====
+    with col_anexar:
+        st.markdown("""
+            <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #00875F;'>
+                <h4 style='margin: 0 0 0.75rem 0; color: #00875F;'>⚙️ Anexar no Pipefy</h4>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Seleção de pipes
+        st.markdown("**📊 Selecione os pipes para processar:**")
+        
+        pipe_liquidacao = st.checkbox(
+            "💰 Pipe Liquidação",
+            value=True,
+            key="pipe_comp_liquidacao"
+        )
+        
+        pipe_taxas = st.checkbox(
+            "📊 Pipe Taxas",
+            value=False,
+            key="pipe_comp_taxas"
+        )
+        
+        pipe_taxas_anbima = st.checkbox(
+            "📈 Taxas Anbima (em desenvolvimento)",
+            value=False,
+            disabled=True,
+            key="pipe_comp_taxas_anbima"
+        )
+        
+        st.markdown("---")
+        
+        # Data para buscar no Pipefy
+        data_pipefy = st.date_input(
+            "📅 Data de Referência Pipefy",
+            value=dt.date.today(),
+            help="Data para buscar comprovantes correspondentes no Pipefy",
+            key="data_pipefy_comp"
+        )
+        
+        st.markdown("---")
+        
+        # Card informativo
+        st.info("""
+        **ℹ️ Como funciona:**
+        
+        • Matching por VALOR e NOME do beneficiário
+        
+        • Anexa automaticamente ao card correspondente
+        
+        • Move para fase "Solicitação Paga"
+        """)
+        
+        st.markdown("---")
+        
+        # Botão principal
         if st.button(
             "▶ Anexar Comprovantes",
             type="primary",
-            disabled=executar_disabled,
-            key="btn_exec_comprovantes",
-            use_container_width=True
+            use_container_width=True,
+            key="btn_anexar_comprovantes",
+            disabled=not any([pipe_liquidacao, pipe_taxas])
         ):
-            with st.spinner("Anexando comprovantes..."):
+            with st.spinner("Processando..."):
                 try:
-                    data_fim = dt.date.today()
-                    data_inicio = data_fim - timedelta(days=periodo_dias)
+                    data_busca_str = data_pipefy.strftime("%Y-%m-%d")
                     
-                    data_inicio_str = data_inicio.strftime("%Y-%m-%d")
-                    data_fim_str = data_fim.strftime("%Y-%m-%d")
+                    st.markdown("---")
+                    st.markdown("### 📊 Logs de Execução")
                     
-                    resultado = None
-                    arquivo_saida = None
+                    log_container = st.container()
                     
-                    # Determinar módulo baseado no tipo
-                    if tipo_pipe == "Liquidação":
-                        module, error = get_module('Anexarcomprovantespipe')
-                        if not module:
-                            st.error(f"❌ Módulo Anexarcomprovantespipe não disponível: {error}")
-                        else:
-                            st.info("🔄 Anexando comprovantes no pipe de liquidação...")
+                    # Processar pipes selecionados
+                    if pipe_liquidacao:
+                        with log_container:
+                            st.markdown("#### 💰 Pipe Liquidação")
                             
-                            # Modo automático (padrão)
-                            resultado = module.main()
-                            arquivo_saida = f"comprovantes_liquidacao_{data_fim_str}.xlsx"
+                            module, error = get_module('Anexarcomprovantespipe')
+                            if not module:
+                                st.error(f"❌ Módulo não disponível: {error}")
+                            else:
+                                st.info(f"� Buscando cards com data: {data_busca_str}")
+                                
+                                if hasattr(module, 'processar_todos_cards'):
+                                    resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                    
+                                    if resultados:
+                                        sucessos = [r for r in resultados if r.get('sucesso')]
+                                        st.success(f"✅ {len(sucessos)} card(s) processado(s) com sucesso")
+                                        
+                                        for r in sucessos:
+                                            st.write(f"  ✅ {r.get('card_title', 'Card')} → Solicitação Paga")
+                                    else:
+                                        st.warning("⚠️ Nenhum card processado")
+                                else:
+                                    st.error("❌ Função processar_todos_cards não encontrada")
                     
-                    elif tipo_pipe == "Taxas":
-                        module, error = get_module('Anexarcomprovantespipetaxas')
-                        if not module:
-                            st.error(f"❌ Módulo Anexarcomprovantespipetaxas não disponível: {error}")
-                        else:
-                            st.info("🔄 Anexando comprovantes no pipe de taxas...")
+                    if pipe_taxas:
+                        with log_container:
+                            st.markdown("#### 📊 Pipe Taxas")
                             
-                            # Modo automático (padrão)
-                            resultado = module.main()
-                            arquivo_saida = f"comprovantes_taxas_{data_fim_str}.xlsx"
+                            module, error = get_module('Anexarcomprovantespipetaxas')
+                            if not module:
+                                st.error(f"❌ Módulo não disponível: {error}")
+                            else:
+                                st.info(f"� Buscando cards com data: {data_busca_str}")
+                                
+                                if hasattr(module, 'processar_todos_cards'):
+                                    resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                    
+                                    if resultados:
+                                        sucessos = [r for r in resultados if r.get('sucesso')]
+                                        st.success(f"✅ {len(sucessos)} card(s) processado(s) com sucesso")
+                                        
+                                        for r in sucessos:
+                                            st.write(f"  ✅ {r.get('card_title', 'Card')} → Solicitação Paga")
+                                    else:
+                                        st.warning("⚠️ Nenhum card processado")
+                                else:
+                                    st.error("❌ Função processar_todos_cards não encontrada")
                     
-                    # Mostrar resultado
-                    if resultado or resultado == 0:
-                        st.success(f"✅ Comprovantes anexados com sucesso!")
+                    st.markdown("---")
+                    st.success("✅ Processamento concluído!")
+                    
+                except Exception as e:
+                    st.error(f"❌ Erro: {str(e)}")
+                    with st.expander("🔍 Detalhes do erro"):
+                        st.code(traceback.format_exc())
+        
+        # Botão de teste
+        if st.button(
+            "🧪 Testar Matching (sem anexar)",
+            use_container_width=True,
+            key="btn_testar_matching",
+            disabled=not pipe_liquidacao
+        ):
+            with st.spinner("Testando matching..."):
+                try:
+                    data_busca_str = data_pipefy.strftime("%Y-%m-%d")
+                    
+                    st.markdown("---")
+                    st.markdown("### 🧪 Teste de Matching")
+                    
+                    module, error = get_module('Anexarcomprovantespipe')
+                    if not module:
+                        st.error(f"❌ Módulo não disponível: {error}")
+                    else:
+                        st.info(f"📅 Data: {data_busca_str}")
+                        st.info("⚠️ Modo teste - Sem anexar ou mover cards")
                         
-                        # Salvar no session_state
-                        st.session_state['ultimo_resultado_comp'] = resultado
-                        st.session_state['arquivo_saida_comp'] = arquivo_saida
-                        
-                        # Exibir métricas
-                        if isinstance(resultado, dict):
-                            cols_metricas = st.columns(min(4, len(resultado)))
-                            for idx, (key, value) in enumerate(list(resultado.items())[:4]):
-                                with cols_metricas[idx]:
-                                    st.metric(key, value)
+                        if hasattr(module, 'testar_matching_apenas'):
+                            module.testar_matching_apenas(data_busca=data_busca_str)
+                            st.success("✅ Teste concluído!")
                         else:
-                            st.metric("Processados", resultado)
+                            st.error("❌ Função testar_matching_apenas não encontrada")
                 
                 except Exception as e:
-                    st.error(f"❌ Erro ao anexar comprovantes: {str(e)}")
-                    st.code(traceback.format_exc())
-    
-    with col_exec2:
-        # Botão de download
-        if 'arquivo_saida_comp' in st.session_state:
-            st.markdown("### 📥 Download")
-            
-            arquivo_path = st.session_state['arquivo_saida_comp']
-            
-            if os.path.exists(arquivo_path):
-                with open(arquivo_path, 'rb') as f:
-                    st.download_button(
-                        label="📥 Baixar Relatório",
-                        data=f,
-                        file_name=os.path.basename(arquivo_path),
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
-                st.caption(f"📄 {os.path.basename(arquivo_path)}")
-            else:
-                st.warning("Arquivo de saída não encontrado")
-        else:
-            st.info("💡 Execute a anexação para gerar o relatório")
-    
-    # Resultado detalhado
-    if 'ultimo_resultado_comp' in st.session_state:
-        with st.expander("📊 Detalhes do Resultado", expanded=False):
-            st.json(st.session_state['ultimo_resultado_comp'])
+                    st.error(f"❌ Erro: {str(e)}")
+                    with st.expander("� Detalhes do erro"):
+                        st.code(traceback.format_exc())
+
 
 # ===== RODAPÉ =====
 st.markdown("---")
