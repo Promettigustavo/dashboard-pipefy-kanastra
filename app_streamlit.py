@@ -1958,36 +1958,27 @@ elif aba_selecionada == "📎 Comprovantes":
                                     qtd = len(receipts_list)
                                     
                                     if qtd > 0:
-                                        st.info(f"� {qtd} comprovante(s) disponível(is)")
+                                        comprovantes_encontrados += qtd
                                         
-                                        # Baixar cada comprovante
-                                        for idx_comp, payment_receipt in enumerate(receipts_list, 1):
-                                            try:
-                                                payment_data = payment_receipt.get('payment', {})
-                                                payment_id = payment_data.get('paymentId')
-                                                payee_name = payment_data.get('payee', {}).get('name', 'Desconhecido')
-                                                amount = payment_data.get('paymentAmountInfo', {}).get('direct', {}).get('amount', '0.00')
-                                                
-                                                # Mostrar progresso
-                                                status_text = f"⏳ Baixando {idx_comp}/{qtd}: {payee_name[:40]}... (R$ {amount})"
-                                                with st.spinner(status_text):
-                                                    if payment_id:
-                                                        pdf_path = cliente.buscar_e_baixar_comprovante(
-                                                            payment_id=payment_id,
-                                                            aguardar=True,
-                                                            max_retries=3
-                                                        )
-                                                        if pdf_path:
-                                                            comprovantes_baixados += 1
-                                                            st.success(f"✅ {idx_comp}/{qtd} - {payee_name[:40]}")
-                                                        else:
-                                                            st.warning(f"⚠️ {idx_comp}/{qtd} - Falha ao baixar")
-                                                    else:
-                                                        st.warning(f"⚠️ {idx_comp}/{qtd} - ID não disponível")
-                                            except Exception as e_download:
-                                                st.error(f"❌ {idx_comp}/{qtd} - Erro: {str(e_download)[:60]}")
+                                        # APENAS ADICIONAR À LISTA (não baixar ainda)
+                                        for payment_receipt in receipts_list:
+                                            payment_data = payment_receipt.get('payment', {})
+                                            payment_id = payment_data.get('paymentId')
+                                            payee_name = payment_data.get('payee', {}).get('name', 'Desconhecido')
+                                            amount = payment_data.get('paymentAmountInfo', {}).get('direct', {}).get('amount', '0.00')
+                                            value_date = payment_data.get('requestValueDate', data_busca_str)
+                                            
+                                            st.session_state.comprovantes_listados.append({
+                                                'fundo_id': fundo_id,
+                                                'payment_id': payment_id,
+                                                'beneficiario': payee_name,
+                                                'valor': amount,
+                                                'data': value_date,
+                                                'cliente': cliente,
+                                                'display': f"{fundo_id} | {payee_name[:35]} | R$ {amount} | {value_date}"
+                                            })
                                         
-                                        log_placeholder.success(f"✅ {fundo_id}: {comprovantes_baixados} de {qtd} comprovante(s) baixado(s)")
+                                        log_placeholder.success(f"✅ {fundo_id}: {qtd} comprovante(s) listado(s)")
                                     else:
                                         st.info(f"ℹ️ Nenhum comprovante disponível para esta data")
                                         log_placeholder.info(f"ℹ️ {fundo_id}: Sem comprovantes")
