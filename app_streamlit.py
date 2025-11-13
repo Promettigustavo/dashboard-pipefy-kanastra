@@ -407,7 +407,7 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     """
     from pathlib import Path
     
-    print(f"🔑 Criando autenticação para fundo {fundo_id}")
+    st.write(f"🔑 Criando autenticação para fundo {fundo_id}")
     
     # Obter credenciais
     fundos, source = get_santander_credentials()
@@ -421,10 +421,10 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     cert_path = Path(__file__).parent / "certificados" / "santander_cert.pem"
     key_path = Path(__file__).parent / "certificados" / "santander_key.pem"
     
-    print(f"📂 Certificado: {cert_path}")
-    print(f"📂 Chave: {key_path}")
-    print(f"✅ Cert existe: {cert_path.exists()}")
-    print(f"✅ Key existe: {key_path.exists()}")
+    st.write(f"📂 Certificado: {cert_path}")
+    st.write(f"📂 Chave: {key_path}")
+    st.write(f"✅ Cert existe: {cert_path.exists()}")
+    st.write(f"✅ Key existe: {key_path.exists()}")
     
     if not cert_path.exists():
         raise FileNotFoundError(f"❌ Certificado não encontrado: {cert_path}")
@@ -1848,59 +1848,58 @@ elif aba_selecionada == "📎 Comprovantes":
                         st.info("💡 Configure as credenciais no arquivo `credenciais_bancos.py` (local) ou em `secrets.toml` (cloud)")
                     else:
                         # Processar cada fundo
-                        print(f"DEBUG: Iniciando processamento de {len(fundos_selecionados)} fundos")
-                        print(f"DEBUG: Fundos selecionados: {fundos_selecionados}")
+                        st.write(f"🔄 Iniciando processamento de {len(fundos_selecionados)} fundos")
+                        st.write(f"📋 Fundos: {', '.join(fundos_selecionados)}")
                         
                         for idx, fundo_id in enumerate(fundos_selecionados, 1):
-                            print(f"\n{'='*60}")
-                            print(f"DEBUG: ===== PROCESSANDO FUNDO {idx}/{total_fundos}: {fundo_id} =====")
-                            print(f"{'='*60}\n")
+                            st.markdown("---")
+                            st.write(f"### 🏦 Processando {idx}/{total_fundos}: {fundo_id}")
                             
                             progress_bar.progress(idx / (total_fundos + 1))
                             log_placeholder.info(f"⏳ [{idx}/{total_fundos}] Processando fundo: {fundo_id}...")
                             
                             try:
-                                print(f"DEBUG: Verificando módulo buscar_comprovantes_santander...")
+                                st.write(f"🔍 Verificando módulo buscar_comprovantes_santander...")
                                 # Criar cliente Santander para o fundo
                                 if hasattr(module_buscar, 'SantanderComprovantes'):
-                                    print(f"DEBUG: Módulo tem SantanderComprovantes ✓")
+                                    st.write(f"✅ Módulo SantanderComprovantes encontrado")
                                     # Tentar criar autenticação
                                     auth = None
                                     try:
-                                        print(f"DEBUG: Tentando import de credenciais_bancos...")
+                                        st.write(f"🔧 Tentando import de credenciais_bancos...")
                                         # Tentar import local primeiro
                                         from credenciais_bancos import SantanderAuth
-                                        print(f"DEBUG: Import OK, criando auth via SantanderAuth.criar_por_fundo para {fundo_id}")
+                                        st.write(f"✅ Import OK, criando auth via SantanderAuth.criar_por_fundo")
                                         auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
-                                        print(f"DEBUG: Auth criado com sucesso via módulo local")
+                                        st.write(f"✅ Auth criado com sucesso via módulo local")
                                     except ImportError as e_import:
                                         # Usar função helper com secrets
-                                        print(f"DEBUG: ImportError: {e_import}")
-                                        print(f"DEBUG: Usando criar_santander_auth_do_secrets para {fundo_id}")
+                                        st.write(f"⚠️ ImportError: {e_import}")
+                                        st.write(f"🔄 Usando criar_santander_auth_do_secrets...")
                                         auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
-                                        print(f"DEBUG: Auth criado com sucesso via secrets")
+                                        st.write(f"✅ Auth criado via secrets")
                                     except Exception as e_auth_local:
                                         # Se falhar no modo local, tentar secrets
-                                        print(f"DEBUG: Erro ao criar auth local: {type(e_auth_local).__name__}: {e_auth_local}")
-                                        print(f"DEBUG: Tentando criar auth via secrets...")
+                                        st.write(f"⚠️ Erro auth local: {type(e_auth_local).__name__}: {e_auth_local}")
+                                        st.write(f"🔄 Fallback: tentando secrets...")
                                         auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
-                                        print(f"DEBUG: Auth criado com sucesso via secrets (fallback)")
+                                        st.write(f"✅ Auth criado via secrets (fallback)")
                                     
                                     if not auth:
                                         raise ValueError(f"Não foi possível criar autenticação para {fundo_id}")
                                     
                                     # Criar cliente de comprovantes
-                                    print(f"DEBUG: Criando SantanderComprovantes para {fundo_id}")
+                                    st.write(f"🔧 Criando cliente SantanderComprovantes...")
                                     cliente = module_buscar.SantanderComprovantes(auth)
-                                    print(f"DEBUG: Cliente criado com sucesso")
+                                    st.write(f"✅ Cliente criado com sucesso")
                                     
                                     # Buscar comprovantes
-                                    print(f"DEBUG: Listando comprovantes de {data_busca_str}")
+                                    st.write(f"🔍 Listando comprovantes de {data_busca_str}...")
                                     comprovantes = cliente.listar_comprovantes(
                                         data_inicio=data_busca_str,
                                         data_fim=data_busca_str
                                     )
-                                    print(f"DEBUG: Listagem concluída")
+                                    st.write(f"✅ Listagem concluída")
                                     
                                     if comprovantes:
                                         qtd = len(comprovantes.get('receipts', []))
@@ -1931,17 +1930,14 @@ elif aba_selecionada == "📎 Comprovantes":
                                 erro_msg = str(e_fundo)
                                 traceback_str = traceback.format_exc()
                                 
-                                print(f"DEBUG: ERRO CAPTURADO para {fundo_id}")
-                                print(f"DEBUG: Tipo do erro: {type(e_fundo).__name__}")
-                                print(f"DEBUG: Mensagem: {erro_msg}")
-                                print(f"DEBUG: Traceback completo:")
-                                print(traceback_str)
+                                st.error(f"❌ ERRO em {fundo_id}")
+                                st.code(erro_msg)
                                 
                                 erros_fundos.append((fundo_id, erro_msg))
                                 log_placeholder.error(f"❌ {fundo_id}: {erro_msg}")
                                 
                                 # Mostrar traceback expandível
-                                with st.expander(f"🔍 Detalhes do erro - {fundo_id}"):
+                                with st.expander(f"🔍 Traceback completo - {fundo_id}", expanded=True):
                                     st.code(traceback_str)
                     
                     # Finalizar
