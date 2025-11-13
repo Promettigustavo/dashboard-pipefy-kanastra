@@ -151,11 +151,20 @@ def get_available_modules():
 
 def get_module(module_key):
     """Obtém um módulo, importando se necessário"""
+    import importlib
     available = get_available_modules()
     if module_key not in available:
         return None, f"Módulo {module_key} não reconhecido"
     
     module, error = import_module_lazy(available[module_key])
+    
+    # Recarregar módulo para pegar última versão (importante para movecards e mover_2a_aprovacao)
+    if module and module_key in ['movecards', 'mover_2a_aprovacao']:
+        try:
+            module = importlib.reload(module)
+        except:
+            pass
+    
     return module, error
 
 # Header principal
