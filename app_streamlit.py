@@ -1876,6 +1876,29 @@ elif aba_selecionada == "📎 Comprovantes":
         # Carregar credenciais usando função helper
         SANTANDER_FUNDOS, credenciais_source = get_santander_credentials()
         
+        # DEBUG VISUAL
+        with st.expander("🔍 DEBUG - Status de Carregamento", expanded=True):
+            st.write(f"**Fonte de credenciais:** `{credenciais_source}`")
+            st.write(f"**Fundos carregados:** {len(SANTANDER_FUNDOS)}")
+            if SANTANDER_FUNDOS:
+                st.write(f"**Primeiros 5 fundos:** {list(SANTANDER_FUNDOS.keys())[:5]}")
+            
+            # Verificar secrets
+            if "santander_fundos" in st.secrets:
+                all_keys = list(st.secrets["santander_fundos"].keys())
+                st.write(f"✅ **santander_fundos encontrado em secrets**")
+                st.write(f"📊 **Total de chaves em secrets:** {len(all_keys)}")
+                st.write(f"🔑 **Primeiras 10 chaves:** {all_keys[:10]}")
+                
+                # Verificar tipos
+                tipos = {}
+                for key in all_keys[:5]:
+                    val = st.secrets["santander_fundos"][key]
+                    tipos[key] = type(val).__name__
+                st.write(f"📝 **Tipos das primeiras 5 chaves:** {tipos}")
+            else:
+                st.write("❌ **santander_fundos NÃO encontrado em secrets**")
+        
         if credenciais_source == "none":
             st.error("❌ **CREDENCIAIS NÃO CONFIGURADAS** - Fundos Santander indisponíveis")
             st.markdown("""
