@@ -1740,71 +1740,149 @@ elif aba_selecionada == "📎 Comprovantes":
             key="btn_anexar_comprovantes",
             disabled=not any([pipe_liquidacao, pipe_taxas])
         ):
-            with st.spinner("Processando..."):
-                try:
-                    data_busca_str = data_pipefy.strftime("%Y-%m-%d")
+            st.markdown("---")
+            st.markdown("### 📊 Execução em Andamento")
+            
+            # Container para logs em tempo real
+            log_placeholder = st.empty()
+            progress_bar = st.progress(0)
+            
+            # Armazenar resultados consolidados
+            resultados_consolidados = []
+            total_processados = 0
+            total_sucessos = 0
+            
+            try:
+                data_busca_str = data_pipefy.strftime("%Y-%m-%d")
+                pipes_total = sum([pipe_liquidacao, pipe_taxas])
+                pipe_atual = 0
+                
+                # Processar Pipe Liquidação
+                if pipe_liquidacao:
+                    pipe_atual += 1
+                    log_placeholder.info(f"⏳ [{pipe_atual}/{pipes_total}] Processando Pipe Liquidação... (data: {data_busca_str})")
+                    progress_bar.progress(pipe_atual / (pipes_total + 1))
                     
-                    st.markdown("---")
-                    st.markdown("### 📊 Logs de Execução")
-                    
-                    log_container = st.container()
-                    
-                    # Processar pipes selecionados
-                    if pipe_liquidacao:
-                        with log_container:
-                            st.markdown("#### 💰 Pipe Liquidação")
+                    module, error = get_module('Anexarcomprovantespipe')
+                    if not module:
+                        st.error(f"❌ Pipe Liquidação: Módulo não disponível - {error}")
+                    else:
+                        if hasattr(module, 'processar_todos_cards'):
+                            resultados = module.processar_todos_cards(data_busca=data_busca_str)
                             
-                            module, error = get_module('Anexarcomprovantespipe')
-                            if not module:
-                                st.error(f"❌ Módulo não disponível: {error}")
-                            else:
-                                st.info(f"� Buscando cards com data: {data_busca_str}")
+                            if resultados:
+                                for r in resultados:
+                                    r['pipe'] = 'Liquidação'
+                                    resultados_consolidados.append(r)
+                                    total_processados += 1
+                                    if r.get('sucesso'):
+                                        total_sucessos += 1
                                 
-                                if hasattr(module, 'processar_todos_cards'):
-                                    resultados = module.processar_todos_cards(data_busca=data_busca_str)
-                                    
-                                    if resultados:
-                                        sucessos = [r for r in resultados if r.get('sucesso')]
-                                        st.success(f"✅ {len(sucessos)} card(s) processado(s) com sucesso")
-                                        
-                                        for r in sucessos:
-                                            st.write(f"  ✅ {r.get('card_title', 'Card')} → Solicitação Paga")
-                                    else:
-                                        st.warning("⚠️ Nenhum card processado")
-                                else:
-                                    st.error("❌ Função processar_todos_cards não encontrada")
+                                log_placeholder.success(f"✅ Pipe Liquidação: {len([r for r in resultados if r.get('sucesso')])} cards movidos")
+                            else:
+                                log_placeholder.warning("⚠️ Pipe Liquidação: Nenhum card encontrado")
+                        else:
+                            st.error("❌ Pipe Liquidação: Função processar_todos_cards não encontrada")
+                
+                # Processar Pipe Taxas
+                if pipe_taxas:
+                    pipe_atual += 1
+                    log_placeholder.info(f"⏳ [{pipe_atual}/{pipes_total}] Processando Pipe Taxas... (data: {data_busca_str})")
+                    progress_bar.progress(pipe_atual / (pipes_total + 1))
                     
-                    if pipe_taxas:
-                        with log_container:
-                            st.markdown("#### 📊 Pipe Taxas")
+                    module, error = get_module('Anexarcomprovantespipetaxas')
+                    if not module:
+                        st.error(f"❌ Pipe Taxas: Módulo não disponível - {error}")
+                    else:
+                        if hasattr(module, 'processar_todos_cards'):
+                            resultados = module.processar_todos_cards(data_busca=data_busca_str)
                             
-                            module, error = get_module('Anexarcomprovantespipetaxas')
-                            if not module:
-                                st.error(f"❌ Módulo não disponível: {error}")
-                            else:
-                                st.info(f"� Buscando cards com data: {data_busca_str}")
+                            if resultados:
+                                for r in resultados:
+                                    r['pipe'] = 'Taxas'
+                                    resultados_consolidados.append(r)
+                                    total_processados += 1
+                                    if r.get('sucesso'):
+                                        total_sucessos += 1
                                 
-                                if hasattr(module, 'processar_todos_cards'):
-                                    resultados = module.processar_todos_cards(data_busca=data_busca_str)
-                                    
-                                    if resultados:
-                                        sucessos = [r for r in resultados if r.get('sucesso')]
-                                        st.success(f"✅ {len(sucessos)} card(s) processado(s) com sucesso")
-                                        
-                                        for r in sucessos:
-                                            st.write(f"  ✅ {r.get('card_title', 'Card')} → Solicitação Paga")
-                                    else:
-                                        st.warning("⚠️ Nenhum card processado")
-                                else:
-                                    st.error("❌ Função processar_todos_cards não encontrada")
-                    
+                                log_placeholder.success(f"✅ Pipe Taxas: {len([r for r in resultados if r.get('sucesso')])} cards movidos")
+                            else:
+                                log_placeholder.warning("⚠️ Pipe Taxas: Nenhum card encontrado")
+                        else:
+                            st.error("❌ Pipe Taxas: Função processar_todos_cards não encontrada")
+                
+                # Finalizar progress
+                progress_bar.progress(1.0)
+                log_placeholder.success("✅ Processamento concluído!")
+                
+                # RESUMO CONSOLIDADO
+                st.markdown("---")
+                st.markdown("### � Resumo da Execução")
+                
+                # Métricas principais
+                col_m1, col_m2, col_m3 = st.columns(3)
+                with col_m1:
+                    st.metric("Total Processados", total_processados)
+                with col_m2:
+                    st.metric("Cards Movidos", total_sucessos, delta=f"{(total_sucessos/total_processados*100) if total_processados > 0 else 0:.1f}%")
+                with col_m3:
+                    st.metric("Sem Match", total_processados - total_sucessos)
+                
+                # Tabela detalhada de cards movidos
+                if total_sucessos > 0:
                     st.markdown("---")
-                    st.success("✅ Processamento concluído!")
+                    st.markdown("#### ✅ Cards Movidos para 'Solicitação Paga'")
                     
-                except Exception as e:
-                    st.error(f"❌ Erro: {str(e)}")
-                    with st.expander("🔍 Detalhes do erro"):
-                        st.code(traceback.format_exc())
+                    # Criar dataframe com cards bem-sucedidos
+                    cards_movidos = [r for r in resultados_consolidados if r.get('sucesso')]
+                    
+                    if cards_movidos:
+                        # Preparar dados para tabela
+                        tabela_data = []
+                        for card in cards_movidos:
+                            tabela_data.append({
+                                "Pipe": card.get('pipe', 'N/A'),
+                                "Fundo": card.get('fundo', 'N/A'),
+                                "Beneficiário": card.get('beneficiario', card.get('card_title', 'N/A')),
+                                "Valor": f"R$ {card.get('valor', 0):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                                "Match": card.get('tipo_match', 'Valor + Nome')
+                            })
+                        
+                        # Exibir tabela
+                        import pandas as pd
+                        df_movidos = pd.DataFrame(tabela_data)
+                        st.dataframe(
+                            df_movidos,
+                            use_container_width=True,
+                            hide_index=True
+                        )
+                        
+                        # Resumo por fundo
+                        st.markdown("#### 📊 Resumo por Fundo")
+                        resumo_fundos = {}
+                        for card in cards_movidos:
+                            fundo = card.get('fundo', 'N/A')
+                            if fundo not in resumo_fundos:
+                                resumo_fundos[fundo] = {'count': 0, 'valor_total': 0}
+                            resumo_fundos[fundo]['count'] += 1
+                            resumo_fundos[fundo]['valor_total'] += card.get('valor', 0)
+                        
+                        for fundo, info in sorted(resumo_fundos.items()):
+                            st.write(f"**{fundo}**: {info['count']} card(s) • Total: R$ {info['valor_total']:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
+                
+                # Cards sem match
+                cards_sem_match = [r for r in resultados_consolidados if not r.get('sucesso')]
+                if cards_sem_match:
+                    st.markdown("---")
+                    with st.expander(f"⚠️ Cards sem match ({len(cards_sem_match)})", expanded=False):
+                        for card in cards_sem_match:
+                            motivo = card.get('erro', 'Sem comprovante correspondente')
+                            st.write(f"• **{card.get('card_title', 'N/A')}** ({card.get('pipe', 'N/A')}): {motivo}")
+                    
+            except Exception as e:
+                st.error(f"❌ Erro durante processamento: {str(e)}")
+                with st.expander("🔍 Detalhes do erro"):
+                    st.code(traceback.format_exc())
         
         # Botão de teste
         if st.button(
