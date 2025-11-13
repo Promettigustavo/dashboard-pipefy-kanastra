@@ -1331,7 +1331,7 @@ def processar_card_completo(card, cache_comprovantes=None):
     return resultado
 
 
-def processar_todos_cards(data_busca=None, clientes_santander=None):
+def processar_todos_cards(data_busca=None, clientes_santander=None, callback_status=None):
     """
     Processa todos os cards da fase "Aguardando Comprovante"
     Busca comprovantes e anexa PDFs automaticamente
@@ -1340,8 +1340,14 @@ def processar_todos_cards(data_busca=None, clientes_santander=None):
         data_busca: Data para buscar comprovantes (formato YYYY-MM-DD). Se None, usa hoje.
         clientes_santander: Dict com clientes SantanderComprovantes já inicializados (opcional).
                            Se fornecido, usa esses clientes em vez dos globais.
+        callback_status: Função opcional para atualizar status em tempo real (ex: para Streamlit)
     """
     global santander_clients
+    
+    def atualizar_status(msg):
+        """Helper para chamar callback se existir"""
+        if callback_status:
+            callback_status(msg)
     
     # Se recebeu clientes externos, usar eles
     if clientes_santander:
@@ -1360,21 +1366,29 @@ def processar_todos_cards(data_busca=None, clientes_santander=None):
     log("🚀 PROCESSAMENTO - PIPE LIQUIDAÇÃO")
     log("="*80)
     
+    atualizar_status("🔍 Buscando fase 'Aguardando Comprovante'...")
+    
     # 1. Buscar ID da fase (silencioso)
     fase_id = buscar_fase_por_nome(PIPE_LIQUIDACAO_ID, "Aguardando Comprovante")
     
     if not fase_id:
         log("❌ Erro: Fase 'Aguardando Comprovante' não encontrada")
+        atualizar_status("❌ Erro: Fase não encontrada")
         return None
+    
+    atualizar_status("📋 Buscando cards para processar...")
     
     # 2. Buscar cards da fase (silencioso)
     cards = buscar_cards_da_fase(fase_id, limite=999999)
     
     if not cards:
         log("ℹ️  Nenhum card para processar")
+        atualizar_status("ℹ️ Nenhum card encontrado")
         return []
     
     log(f"📋 Total de cards a processar: {len(cards)}\n")
+    
+    atualizar_status(f"📦 Buscando comprovantes de todos os fundos...")
     
     # 3. CACHEAR COMPROVANTES - Buscar UMA ÚNICA VEZ antes do loop
     log("="*80)
@@ -1441,9 +1455,14 @@ def processar_todos_cards(data_busca=None, clientes_santander=None):
     
     log("\n🔄 Processando cards...")
     
+    atualizar_status(f"🔄 Processando {len(cards)} card(s)...")
+    
     for idx, card in enumerate(cards, 1):
         card_title = card.get('title', 'Sem título')
         log(f"[{idx}/{len(cards)}] {card_title}", level='debug')
+        
+        # Atualizar status com progresso
+        atualizar_status(f"🔄 Processando card {idx}/{len(cards)}: {card_title[:50]}...")
         
         resultado = processar_card_completo(card, cache_comprovantes=cache_comprovantes)
         resultados.append(resultado)
@@ -1451,19 +1470,26 @@ def processar_todos_cards(data_busca=None, clientes_santander=None):
         if resultado.get('pulado', False):
             cards_pulados += 1
             log(f"   ⏭️  Pulado (já tem comprovante)")
+            atualizar_status(f"⏭️ Card {idx}/{len(cards)} pulado (já tem comprovante)")
         elif resultado['sucesso']:
             cards_anexados += 1
             log(f"   ✅ Anexado")
+            atualizar_status(f"✅ Card {idx}/{len(cards)} anexado com sucesso!")
         elif resultado['etapa'] == 'matching' and 'não encontrado' in resultado['motivo'].lower():
             cards_sem_match += 1
             log(f"   ⚠️ {resultado['motivo']}", level='debug')
+            atualizar_status(f"⚠️ Card {idx}/{len(cards)}: comprovante não encontrado")
         elif resultado['etapa'] == 'matching':
             cards_com_match += 1
             log(f"   ℹ️ {resultado['motivo']}", level='debug')
+            atualizar_status(f"🔍 Card {idx}/{len(cards)}: match encontrado")
         else:
             log(f"   ❌ {resultado['motivo']}")
+            atualizar_status(f"❌ Card {idx}/{len(cards)}: {resultado['motivo'][:50]}")
         
         # Remover linha em branco entre cards no minimal
+    
+    atualizar_status("📊 Gerando relatório final...")
     
     # 3. Relatório final
     log("\n" + "="*80)
@@ -1523,7 +1549,7 @@ def processar_todos_cards(data_busca=None, clientes_santander=None):
 
 # ==================== VERSÃO OTIMIZADA (V2) ====================
 
-def processar_todos_cards_v2_otimizado(data_busca=None, clientes_santander=None):
+def processar_todos_cards_v2_otimizado(data_busca=None, clientes_santander=None, callback_status=None):
     """
     VERSÃO OTIMIZADA - Busca comprovantes sob demanda por card
     
@@ -1538,8 +1564,14 @@ def processar_todos_cards_v2_otimizado(data_busca=None, clientes_santander=None)
     Args:
         data_busca: Data para buscar comprovantes (formato YYYY-MM-DD). Se None, usa hoje.
         clientes_santander: Dict com clientes SantanderComprovantes já inicializados.
+        callback_status: Função opcional para atualizar status em tempo real (ex: para Streamlit)
     """
     global santander_clients
+    
+    def atualizar_status(msg):
+        """Helper para chamar callback se existir"""
+        if callback_status:
+            callback_status(msg)
     
     # Se recebeu clientes externos, usar eles
     if clientes_santander:
@@ -1559,22 +1591,30 @@ def processar_todos_cards_v2_otimizado(data_busca=None, clientes_santander=None)
     log("="*80)
     log("💡 Modo: Busca sob demanda (apenas fundos necessários)")
     
+    atualizar_status("🔍 Buscando fase 'Aguardando Comprovante'...")
+    
     # 1. Buscar ID da fase
     fase_id = buscar_fase_por_nome(PIPE_LIQUIDACAO_ID, "Aguardando Comprovante")
     
     if not fase_id:
         log("❌ Erro: Fase 'Aguardando Comprovante' não encontrada")
+        atualizar_status("❌ Erro: Fase não encontrada")
         return None
+    
+    atualizar_status("📋 Buscando cards para processar...")
     
     # 2. Buscar cards da fase
     cards = buscar_cards_da_fase(fase_id, limite=999999)
     
     if not cards:
         log("ℹ️  Nenhum card para processar")
+        atualizar_status("ℹ️ Nenhum card encontrado")
         return []
     
     log(f"📋 Total de cards a processar: {len(cards)}\n")
     log(f"📅 Data de busca: {data_busca_str}\n")
+    
+    atualizar_status(f"🔄 Processando {len(cards)} card(s)...")
     
     # 3. Processar cards um por um (busca sob demanda)
     resultados = []
@@ -1590,6 +1630,9 @@ def processar_todos_cards_v2_otimizado(data_busca=None, clientes_santander=None)
         card_title = card.get('title', 'Sem título')
         log(f"[{idx}/{len(cards)}] {card_title}", level='debug')
         
+        # Atualizar status com progresso
+        atualizar_status(f"🔄 Processando card {idx}/{len(cards)}: {card_title[:50]}...")
+        
         # Processar card com busca sob demanda
         resultado = processar_card_otimizado(card, data_busca_str, cache_fundos)
         resultados.append(resultado)
@@ -1597,17 +1640,24 @@ def processar_todos_cards_v2_otimizado(data_busca=None, clientes_santander=None)
         if resultado.get('pulado', False):
             cards_pulados += 1
             log(f"   ⏭️  Pulado (já tem comprovante)")
+            atualizar_status(f"⏭️ Card {idx}/{len(cards)} pulado (já tem comprovante)")
         elif resultado['sucesso']:
             cards_anexados += 1
             log(f"   ✅ Anexado")
+            atualizar_status(f"✅ Card {idx}/{len(cards)} anexado com sucesso!")
         elif resultado['etapa'] == 'matching' and 'não encontrado' in resultado['motivo'].lower():
             cards_sem_match += 1
             log(f"   ⚠️ {resultado['motivo']}", level='debug')
+            atualizar_status(f"⚠️ Card {idx}/{len(cards)}: comprovante não encontrado")
         elif resultado['etapa'] == 'matching':
             cards_com_match += 1
             log(f"   ✅ Match encontrado")
+            atualizar_status(f"🔍 Card {idx}/{len(cards)}: match encontrado, anexando...")
         else:
             log(f"   ❌ {resultado['motivo']}")
+            atualizar_status(f"❌ Card {idx}/{len(cards)}: {resultado['motivo'][:50]}")
+    
+    atualizar_status("📊 Gerando relatório final...")
     
     # 4. Relatório final
     sucessos = [r for r in resultados if r['sucesso']]

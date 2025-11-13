@@ -2234,30 +2234,58 @@ elif aba_selecionada == "📎 Comprovantes":
                         if hasattr(module, 'processar_todos_cards'):
                             # Avisar que pode demorar
                             with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
-                                log_placeholder.info(f"🔄 Executando matching e anexando comprovantes...")
-                                
                                 # Mostrar qual versão está usando
                                 if usar_otimizacao:
                                     st.caption("🚀 Modo: Busca otimizada sob demanda (V2)")
                                 else:
                                     st.caption("💡 Modo: Cache completo (V1 - padrão)")
                                 
+                                # Container para status dinâmico
+                                status_atual = st.empty()
+                                status_atual.info("🔍 Buscando cards na fase 'Aguardando Comprovante'...")
+                                
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
                                 # Processar - PASSANDO OS CLIENTES
                                 try:
+                                    # Criar função de callback para atualizar status
+                                    def atualizar_status(mensagem):
+                                        status_atual.info(mensagem)
+                                    
+                                    # Verificar se a função aceita callback
+                                    import inspect
+                                    
                                     # Escolher função baseado no checkbox
                                     if usar_otimizacao and hasattr(module, 'processar_todos_cards_v2_otimizado'):
-                                        resultados = module.processar_todos_cards_v2_otimizado(
-                                            data_busca=data_busca_str,
-                                            clientes_santander=clientes_santander
-                                        )
+                                        sig = inspect.signature(module.processar_todos_cards_v2_otimizado)
+                                        if 'callback_status' in sig.parameters:
+                                            resultados = module.processar_todos_cards_v2_otimizado(
+                                                data_busca=data_busca_str,
+                                                clientes_santander=clientes_santander,
+                                                callback_status=atualizar_status
+                                            )
+                                        else:
+                                            resultados = module.processar_todos_cards_v2_otimizado(
+                                                data_busca=data_busca_str,
+                                                clientes_santander=clientes_santander
+                                            )
                                     else:
-                                        resultados = module.processar_todos_cards(
-                                            data_busca=data_busca_str,
-                                            clientes_santander=clientes_santander
-                                        )
+                                        sig = inspect.signature(module.processar_todos_cards)
+                                        if 'callback_status' in sig.parameters:
+                                            resultados = module.processar_todos_cards(
+                                                data_busca=data_busca_str,
+                                                clientes_santander=clientes_santander,
+                                                callback_status=atualizar_status
+                                            )
+                                        else:
+                                            resultados = module.processar_todos_cards(
+                                                data_busca=data_busca_str,
+                                                clientes_santander=clientes_santander
+                                            )
+                                    
+                                    status_atual.success("✅ Processamento concluído!")
                                 except Exception as e_proc:
+                                    status_atual.empty()
                                     st.error(f"❌ Erro ao processar cards: {e_proc}")
                                     import traceback
                                     st.code(traceback.format_exc())
@@ -2300,28 +2328,44 @@ elif aba_selecionada == "📎 Comprovantes":
                         if hasattr(module, 'processar_todos_cards'):
                             # Avisar que pode demorar
                             with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
-                                log_placeholder.info(f"🔄 Executando matching e anexando comprovantes...")
+                                st.caption("� Modo: Cache completo (V1 - padrão)")
                                 
-                                # Mostrar qual versão está usando
-                                if usar_otimizacao:
-                                    st.caption("🚀 Modo: Busca otimizada sob demanda (V2)")
-                                else:
-                                    st.caption("💡 Modo: Cache completo (V1 - padrão)")
+                                # Container para status dinâmico
+                                status_atual = st.empty()
+                                status_atual.info("� Buscando cards na fase 'Aguardando Comprovante'...")
                                 
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
                                 # Processar - PASSANDO OS CLIENTES
-                                # Escolher função baseado no checkbox
-                                if usar_otimizacao and hasattr(module, 'processar_todos_cards_v2_otimizado'):
-                                    resultados = module.processar_todos_cards_v2_otimizado(
-                                        data_busca=data_busca_str,
-                                        clientes_santander=clientes_santander
-                                    )
-                                else:
-                                    resultados = module.processar_todos_cards(
-                                        data_busca=data_busca_str,
-                                        clientes_santander=clientes_santander
-                                    )
+                                try:
+                                    # Criar função de callback para atualizar status
+                                    def atualizar_status(mensagem):
+                                        status_atual.info(mensagem)
+                                    
+                                    # Verificar se a função aceita callback
+                                    import inspect
+                                    sig = inspect.signature(module.processar_todos_cards)
+                                    
+                                    if 'callback_status' in sig.parameters:
+                                        resultados = module.processar_todos_cards(
+                                            data_busca=data_busca_str,
+                                            clientes_santander=clientes_santander,
+                                            callback_status=atualizar_status
+                                        )
+                                    else:
+                                        resultados = module.processar_todos_cards(
+                                            data_busca=data_busca_str,
+                                            clientes_santander=clientes_santander
+                                        )
+                                    
+                                    status_atual.success("✅ Processamento concluído!")
+                                except Exception as e_proc:
+                                    status_atual.empty()
+                                    st.error(f"❌ Erro ao processar cards: {e_proc}")
+                                    import traceback
+                                    st.code(traceback.format_exc())
+                                    resultados = None
+                                
                                 progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:
