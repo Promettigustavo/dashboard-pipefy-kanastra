@@ -421,13 +421,45 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     cert_path = Path(__file__).parent / "certificados" / "santander_cert.pem"
     key_path = Path(__file__).parent / "certificados" / "santander_key.pem"
     
-    st.write(f"📂 Certificado: {cert_path}")
-    st.write(f"📂 Chave: {key_path}")
-    st.write(f"✅ Cert existe: {cert_path.exists()}")
-    st.write(f"✅ Key existe: {key_path.exists()}")
+    st.write(f"📂 **Diretório do script**: `{Path(__file__).parent}`")
+    st.write(f"📂 **Certificado**: `{cert_path}`")
+    st.write(f"📂 **Chave**: `{key_path}`")
+    
+    # Verificar se arquivos existem
+    cert_exists = cert_path.exists()
+    key_exists = key_path.exists()
+    
+    st.write(f"✅ Cert existe: **{cert_exists}**")
+    st.write(f"✅ Key existe: **{key_exists}**")
+    
+    # Se existem, mostrar primeiras linhas
+    if cert_exists:
+        try:
+            with open(cert_path, 'r') as f:
+                first_line = f.readline().strip()
+                st.write(f"  📄 Primeira linha cert: `{first_line}`")
+        except Exception as e:
+            st.error(f"❌ Erro ao ler cert: {e}")
+    
+    if key_exists:
+        try:
+            with open(key_path, 'r') as f:
+                first_line = f.readline().strip()
+                st.write(f"  🔑 Primeira linha key: `{first_line}`")
+        except Exception as e:
+            st.error(f"❌ Erro ao ler key: {e}")
     
     if not cert_path.exists():
+        # Listar o que tem na pasta certificados
+        cert_dir = Path(__file__).parent / "certificados"
+        if cert_dir.exists():
+            st.warning(f"⚠️ Pasta certificados/ existe mas cert não foi encontrado")
+            files = list(cert_dir.glob("*"))
+            st.write(f"  Arquivos encontrados: {[f.name for f in files]}")
+        else:
+            st.error(f"❌ Pasta certificados/ não existe!")
         raise FileNotFoundError(f"❌ Certificado não encontrado: {cert_path}")
+        
     if not key_path.exists():
         raise FileNotFoundError(f"❌ Chave privada não encontrada: {key_path}")
     
