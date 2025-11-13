@@ -582,12 +582,9 @@ with tab_liquidacao:
                 key="modulo_liquidacao"
             )
             
-            # Data de pagamento
-            data_pagamento = st.date_input(
-                "Data de pagamento",
-                value=dt.date.today(),
-                key="data_pag_liquidacao"
-            )
+            # Data de pagamento (sempre data atual)
+            data_pagamento = dt.date.today()
+            st.info(f"📅 Data de pagamento: {data_pagamento.strftime('%d/%m/%Y')}")
             
             st.markdown("---")
             
