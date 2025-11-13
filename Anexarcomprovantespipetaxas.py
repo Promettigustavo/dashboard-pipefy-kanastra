@@ -1264,8 +1264,11 @@ def mover_card_para_fase(card_id, fase_id_destino):
                 card {
                     id
                     title
+                    current_phase {
+                        id
+                        name
+                    }
                 }
-                success
             }
         }
         """
@@ -1297,19 +1300,19 @@ def mover_card_para_fase(card_id, fase_id_destino):
             return False
         
         data = response.json()
-        log(f"   📦 Resposta recebida: {data}")
         
         if 'errors' in data:
             log(f"   ❌ ERRO GraphQL: {data['errors']}")
             return False
         
-        success = data.get('data', {}).get('moveCardToPhase', {}).get('success', False)
+        card_movido = data.get('data', {}).get('moveCardToPhase', {}).get('card')
         
-        if success:
-            log(f"   ✅ SUCCESS! Card movido para fase ID {fase_id_destino}")
+        if card_movido and card_movido.get('id'):
+            fase_atual = card_movido.get('current_phase', {})
+            log(f"   ✅ SUCCESS! Card movido para fase: {fase_atual.get('name', 'N/A')} (ID: {fase_atual.get('id', 'N/A')})")
             return True
         else:
-            log(f"   ❌ FALHA: success=False na resposta")
+            log(f"   ❌ FALHA: Card não retornado na resposta")
             log(f"   📋 Resposta completa: {data}")
             return False
         

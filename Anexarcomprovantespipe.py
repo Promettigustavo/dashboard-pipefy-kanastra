@@ -1711,7 +1711,7 @@ def processar_card_otimizado(card, data_busca_str, cache_fundos):
                     break
         
         if not fundo_id_especifico:
-            log(f"      ⚠️ CNPJ {cnpj_fundo_card} não encontrado nos fundos configurados", level='debug')
+            log(f"      ⚠️ CNPJ {cnpj_fundo_card} não encontrado nos fundos configurados - será consultado todos os fundos disponíveis", level='warning')
     
     resultado['etapa'] = 'matching'
     
