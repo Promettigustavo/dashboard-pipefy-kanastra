@@ -2005,6 +2005,39 @@ elif aba_selecionada == "📎 Comprovantes":
                     progress_bar.progress(1.0)
                     log_placeholder.success("✅ Busca concluída!")
                     
+                    # EXIBIR COMPROVANTES LISTADOS COM CHECKBOXES
+                    if st.session_state.comprovantes_listados:
+                        st.markdown("---")
+                        st.markdown("### 📋 Comprovantes Disponíveis para Download")
+                        st.info(f"📄 {len(st.session_state.comprovantes_listados)} comprovante(s) encontrado(s)")
+                        
+                        # Checkbox "Selecionar Todos"
+                        selecionar_todos = st.checkbox("✅ Selecionar Todos", value=True, key="select_all_comprovantes")
+                        
+                        st.markdown("---")
+                        
+                        # Mostrar checkboxes individuais
+                        if 'comprovantes_selecionados' not in st.session_state:
+                            st.session_state.comprovantes_selecionados = []
+                        
+                        comprovantes_selecionados_temp = []
+                        
+                        for idx, comp in enumerate(st.session_state.comprovantes_listados):
+                            checkbox_value = selecionar_todos  # Sincroniza com "Selecionar Todos"
+                            is_selected = st.checkbox(
+                                comp['display'],
+                                value=checkbox_value,
+                                key=f"comp_checkbox_{idx}"
+                            )
+                            if is_selected:
+                                comprovantes_selecionados_temp.append(comp)
+                        
+                        st.session_state.comprovantes_selecionados = comprovantes_selecionados_temp
+                        
+                        # Exibir contagem de selecionados
+                        st.markdown("---")
+                        st.info(f"✅ **{len(st.session_state.comprovantes_selecionados)} comprovante(s) selecionado(s)**")
+                    
                     # RESUMO
                     st.markdown("---")
                     st.markdown("### 📊 Resumo da Busca")
