@@ -774,141 +774,180 @@ elif aba_selecionada == "🏦 CETIP":
         </div>
     """, unsafe_allow_html=True)
     
-    # Verificar se módulo existe
-    module_integrador, error_integrador = get_module('integrador')
-    if not module_integrador:
-        st.warning(f"⚠️ Módulo integrador não disponível: {error_integrador}")
-        st.info("💡 Certifique-se de que o arquivo `integrador.py` está no diretório do projeto")
-    else:
-        st.success("✅ Módulo integrador carregado")
+    st.info("💡 Os módulos CETIP estão localizados na pasta 'Projeto CETIP' e incluem: NC, Depósito, Compra/Venda, CCI e Conversor V2C")
+    
+    # Selecionar módulo CETIP
+    st.markdown("### 📦 Selecione o Módulo")
+    
+    modulo_cetip = st.radio(
+        "Módulo CETIP",
+        options=[
+            "📄 Emissão de NC",
+            "💰 Emissão Depósito", 
+            "📊 Operação de Compra/Venda",
+            "� Conversor V2C (GOORO)",
+            "📝 Emissão CCI"
+        ],
+        label_visibility="collapsed",
+        key="modulo_cetip",
+        horizontal=False
+    )
+    
+    st.markdown("---")
+    
+    # Layout baseado no módulo selecionado
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.markdown("### 📁 Arquivo de Entrada")
         
-        # Layout
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.markdown("### 📁 Arquivo de Entrada")
-            
+        # Tipo de arquivo varia por módulo
+        if modulo_cetip == "🔄 Conversor V2C (GOORO)":
             arquivo_cetip = st.file_uploader(
-                "Selecione o arquivo CETIP",
-                type=['xlsx', 'xls', 'csv', 'txt'],
+                "Selecione o arquivo de V2C (venda .txt)",
+                type=['txt'],
+                key="arquivo_v2c",
+                help="Arquivo de venda em formato .txt"
+            )
+        else:
+            arquivo_cetip = st.file_uploader(
+                "Selecione a planilha de entrada",
+                type=['xlsx', 'xls', 'xlsm', 'csv'],
                 key="arquivo_cetip",
-                help="Faça upload do arquivo CETIP para processar"
+                help="Planilha Excel com os dados para processamento"
             )
-            
-            if arquivo_cetip:
-                try:
-                    # Preview baseado no tipo
-                    if arquivo_cetip.name.endswith('.txt'):
-                        content = arquivo_cetip.getvalue().decode('utf-8')
-                        with st.expander("👁️ Preview do arquivo", expanded=False):
-                            st.text_area("Conteúdo", content[:1000], height=200)
-                            st.caption(f"📄 {len(content)} caracteres")
-                    else:
-                        df_preview = pd.read_excel(arquivo_cetip) if arquivo_cetip.name.endswith(('.xlsx', '.xls')) else pd.read_csv(arquivo_cetip)
-                        
-                        with st.expander("👁️ Preview do arquivo", expanded=False):
-                            st.dataframe(df_preview.head(10), use_container_width=True)
-                            st.caption(f"📊 {len(df_preview)} linhas × {len(df_preview.columns)} colunas")
-                except Exception as e:
-                    st.warning(f"Não foi possível visualizar o arquivo: {str(e)}")
         
-        with col2:
-            st.markdown("### ⚙️ Configurações")
-            
-            # Tipo de operação CETIP
-            tipo_operacao = st.selectbox(
-                "Tipo de operação",
-                options=[
-                    "Processamento de arquivo",
-                    "Consulta de operações",
-                    "Liquidação",
-                    "Download de dados"
-                ],
-                key="tipo_cetip"
+        if arquivo_cetip:
+            try:
+                # Preview baseado no tipo
+                if arquivo_cetip.name.endswith('.txt'):
+                    content = arquivo_cetip.getvalue().decode('utf-8')
+                    with st.expander("👁️ Preview do arquivo", expanded=False):
+                        st.text_area("Conteúdo", content[:1000], height=200, disabled=True)
+                        st.caption(f"📄 {len(content)} caracteres")
+                else:
+                    df_preview = pd.read_excel(arquivo_cetip) if arquivo_cetip.name.endswith(('.xlsx', '.xls', '.xlsm')) else pd.read_csv(arquivo_cetip)
+                    
+                    with st.expander("👁️ Preview do arquivo", expanded=False):
+                        st.dataframe(df_preview.head(10), use_container_width=True)
+                        st.caption(f"📊 {len(df_preview)} linhas × {len(df_preview.columns)} colunas")
+            except Exception as e:
+                st.warning(f"Não foi possível visualizar o arquivo: {str(e)}")
+    
+    with col2:
+        st.markdown("### ⚙️ Configurações")
+        
+        # Configurações específicas por módulo
+        if modulo_cetip == "💰 Emissão Depósito":
+            st.markdown("**Papel do Participante:**")
+            papel_deposito = st.radio(
+                "Papel",
+                options=["02 - Emissor", "03 - Distribuidor", "Ambos"],
+                label_visibility="collapsed",
+                key="papel_deposito"
+            )
+        
+        elif modulo_cetip == "📝 Emissão CCI":
+            st.markdown("**Operação:**")
+            operacao_cci = st.radio(
+                "Operação CCI",
+                options=["VENDA", "COMPRA"],
+                label_visibility="collapsed",
+                key="operacao_cci"
             )
             
-            # Data de referência
-            data_cetip = st.date_input(
-                "Data de referência",
-                value=dt.date.today(),
-                key="data_cetip"
+            st.markdown("**Modalidade:**")
+            modalidade_cci = st.radio(
+                "Modalidade CCI",
+                options=["Sem Modalidade", "Bruta"],
+                label_visibility="collapsed",
+                key="modalidade_cci"
             )
-            
-            st.markdown("---")
-            st.info(f"📋 Operação: {tipo_operacao}")
         
         st.markdown("---")
         
-        # Execução
-        col_exec1, col_exec2 = st.columns([1, 1])
-        
-        with col_exec1:
-            executar_disabled = (tipo_operacao == "Processamento de arquivo" and not arquivo_cetip)
-            
-            if st.button(
-                "▶ Executar CETIP",
-                type="primary",
-                disabled=executar_disabled,
-                key="btn_exec_cetip",
-                use_container_width=True
-            ):
-                with st.spinner(f"Processando {tipo_operacao}..."):
-                    try:
-                        data_str = data_cetip.strftime("%Y-%m-%d")
-                        resultado = None
-                        
-                        # Executar operação CETIP
-                        if tipo_operacao == "Processamento de arquivo" and arquivo_cetip:
-                            # Salvar temporário
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(arquivo_cetip.name)[1]) as tmp:
-                                tmp.write(arquivo_cetip.getvalue())
-                                tmp_path = tmp.name
-                            
-                            st.info("🔄 Processando arquivo CETIP...")
-                            resultado = module_integrador.processar_arquivo(tmp_path, data_str)
-                            
-                            os.unlink(tmp_path)
-                            arquivo_saida_cetip = f"cetip_resultado_{data_str}.xlsx"
-                        
-                        # Salvar resultado
-                        if resultado:
-                            st.success(f"✅ {tipo_operacao} concluído!")
-                            
-                            st.session_state['ultimo_resultado_cetip'] = resultado
-                            st.session_state['arquivo_saida_cetip'] = f"cetip_resultado_{data_str}.xlsx"
-                            
-                            # Exibir métricas
-                            if isinstance(resultado, dict):
-                                cols_metricas = st.columns(min(4, len(resultado)))
-                                for idx, (key, value) in enumerate(list(resultado.items())[:4]):
-                                    with cols_metricas[idx]:
-                                        st.metric(key, value)
-                        
-                    except Exception as e:
-                        st.error(f"❌ Erro ao processar CETIP: {str(e)}")
-                        st.code(traceback.format_exc())
-        
-        with col_exec2:
-            # Botão de download
-            if 'arquivo_saida_cetip' in st.session_state:
-                st.markdown("### 📥 Download")
+        # Pasta de saída (opcional)
+        pasta_saida_cetip = st.text_input(
+            "📂 Pasta de saída (opcional)",
+            placeholder="Deixe vazio para salvar ao lado da entrada",
+            key="pasta_saida_cetip"
+        )
+    
+    st.markdown("---")
+    
+    # Botão de execução
+    executar_disabled = not arquivo_cetip
+    
+    if st.button(
+        f"🚀 Executar {modulo_cetip}",
+        type="primary",
+        disabled=executar_disabled,
+        key="btn_exec_cetip",
+        use_container_width=True
+    ):
+        with st.spinner(f"Processando {modulo_cetip}..."):
+            try:
+                st.warning("⚠️ Integração com módulos CETIP em desenvolvimento. Os módulos estão localizados em 'Projeto CETIP' e precisam ser integrados ao Streamlit.")
                 
-                arquivo_path = st.session_state['arquivo_saida_cetip']
+                # Salvar arquivo temporário
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(arquivo_cetip.name)[1]) as tmp:
+                    tmp.write(arquivo_cetip.getvalue())
+                    tmp_path = tmp.name
                 
-                if os.path.exists(arquivo_path):
-                    with open(arquivo_path, 'rb') as f:
-                        st.download_button(
-                            label="📥 Baixar Resultado",
-                            data=f,
-                            file_name=os.path.basename(arquivo_path),
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
-                        )
-                    st.caption(f"📄 {os.path.basename(arquivo_path)}")
-                else:
-                    st.warning("Arquivo de saída não encontrado")
-            else:
-                st.info("💡 Execute o processamento para gerar o arquivo de saída")
+                st.info(f"� Arquivo salvo temporariamente: {tmp_path}")
+                st.info(f"📦 Módulo selecionado: {modulo_cetip}")
+                
+                # Exibir configurações
+                if modulo_cetip == "💰 Emissão Depósito":
+                    st.info(f"👤 Papel: {papel_deposito}")
+                elif modulo_cetip == "📝 Emissão CCI":
+                    st.info(f"📊 Operação: {operacao_cci} | Modalidade: {modalidade_cci}")
+                
+                if pasta_saida_cetip:
+                    st.info(f"📂 Pasta de saída: {pasta_saida_cetip}")
+                
+                # Limpar arquivo temporário
+                os.unlink(tmp_path)
+                
+                st.success("✅ Simulação concluída! Integração real com módulos CETIP será implementada.")
+                
+            except Exception as e:
+                st.error(f"❌ Erro ao processar: {str(e)}")
+                st.code(traceback.format_exc())
+    
+    # Informações adicionais
+    with st.expander("ℹ️ Informações sobre os módulos CETIP"):
+        st.markdown("""
+        **Módulos disponíveis:**
+        
+        - **📄 Emissão de NC**: Gera arquivo de Nota de Custódia a partir de planilha Excel (2ª aba)
+        - **💰 Emissão Depósito**: Gera arquivo de Depósito para Emissor (02) e/ou Distribuidor (03)
+        - **📊 Operação de Compra/Venda**: Processa operações de compra e venda
+        - **🔄 Conversor V2C (GOORO)**: Converte arquivo de venda .txt para formato de compra
+        - **📝 Emissão CCI**: Gera arquivo CCI com operação (VENDA/COMPRA) e modalidade
+        
+        **Localização:** `C:\\Users\\GustavoPrometti\\OneDrive - Kanastra\\Documentos\\Kanastra\\Projeto CETIP`
+        """)
+    
+    # Área de resultados (se houver)
+    if 'arquivo_saida_cetip' in st.session_state:
+        st.markdown("---")
+        st.markdown("### 📥 Resultado")
+        
+        arquivo_path = st.session_state['arquivo_saida_cetip']
+        
+        if os.path.exists(arquivo_path):
+            with open(arquivo_path, 'rb') as f:
+                st.download_button(
+                    label="📥 Baixar Resultado",
+                    data=f,
+                    file_name=os.path.basename(arquivo_path),
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            st.caption(f"📄 {os.path.basename(arquivo_path)}")
+        else:
+            st.warning("Arquivo de saída não encontrado")
         
         # Resultado detalhado
         if 'ultimo_resultado_cetip' in st.session_state:
