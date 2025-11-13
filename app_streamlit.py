@@ -2037,6 +2037,63 @@ elif aba_selecionada == "📎 Comprovantes":
                         # Exibir contagem de selecionados
                         st.markdown("---")
                         st.info(f"✅ **{len(st.session_state.comprovantes_selecionados)} comprovante(s) selecionado(s)**")
+                        
+                        # BOTÃO DE DOWNLOAD
+                        if len(st.session_state.comprovantes_selecionados) > 0:
+                            if st.button(f"📥 Baixar {len(st.session_state.comprovantes_selecionados)} Comprovante(s) Selecionado(s)", 
+                                        type="primary", 
+                                        key="btn_download_selecionados"):
+                                
+                                # EXECUTAR DOWNLOAD DOS SELECIONADOS
+                                st.markdown("---")
+                                st.markdown("### 📥 Baixando Comprovantes Selecionados...")
+                                
+                                download_progress = st.progress(0.0)
+                                download_status = st.empty()
+                                
+                                total_selecionados = len(st.session_state.comprovantes_selecionados)
+                                baixados_sucesso = 0
+                                baixados_erro = 0
+                                
+                                for idx, comp in enumerate(st.session_state.comprovantes_selecionados, 1):
+                                    try:
+                                        # Atualizar progresso
+                                        progresso = idx / total_selecionados
+                                        download_progress.progress(progresso)
+                                        download_status.info(f"⏳ Baixando {idx}/{total_selecionados}: {comp['beneficiario'][:40]}...")
+                                        
+                                        # Buscar e baixar comprovante
+                                        cliente = comp['cliente']
+                                        payment_id = comp['payment_id']
+                                        
+                                        if payment_id and cliente:
+                                            pdf_path = cliente.buscar_e_baixar_comprovante(
+                                                payment_id=payment_id,
+                                                aguardar=True,
+                                                max_retries=3
+                                            )
+                                            if pdf_path:
+                                                baixados_sucesso += 1
+                                                download_status.success(f"✅ {idx}/{total_selecionados} - {comp['beneficiario'][:40]}")
+                                            else:
+                                                baixados_erro += 1
+                                                download_status.warning(f"⚠️ {idx}/{total_selecionados} - Falha ao baixar")
+                                        else:
+                                            baixados_erro += 1
+                                            download_status.warning(f"⚠️ {idx}/{total_selecionados} - Dados incompletos")
+                                    
+                                    except Exception as e_down:
+                                        baixados_erro += 1
+                                        download_status.error(f"❌ {idx}/{total_selecionados} - Erro: {str(e_down)[:60]}")
+                                
+                                # Finalizar download
+                                download_progress.progress(1.0)
+                                download_status.success(f"✅ Download concluído! {baixados_sucesso} sucesso, {baixados_erro} erro(s)")
+                                
+                                # Atualizar métricas
+                                comprovantes_baixados = baixados_sucesso
+                        else:
+                            st.warning("⚠️ Nenhum comprovante selecionado para download")
                     
                     # RESUMO
                     st.markdown("---")
