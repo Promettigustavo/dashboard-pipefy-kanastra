@@ -1317,104 +1317,62 @@ elif aba_selecionada == "🏦 CETIP":
                     log_cetip.append(f"📂 Arquivo temporário: {tmp_path}")
                     log_cetip.append("")
                     
+                    # Converter string de tmp_path para Path object
+                    tmp_path_obj = Path(tmp_path)
+                    
                     # Processar NC
                     if executar_nc:
                         log_cetip.append("─" * 60)
                         log_cetip.append("� [NC] Iniciando Emissão de NC...")
                         log_cetip.append("─" * 60)
-                        log_cetip.append("⚙️ Configuração: Sheet index = 1 (2ª aba)")
-                        log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
-                        log_cetip.append(f"   Saída: NC_{os.path.splitext(arquivo_cetip.name)[0]}.txt")
-                        log_cetip.append("")
-                        log_cetip.append("⚠️ Integração com módulo EmissaoNC_v2.py em desenvolvimento")
-                        log_cetip.append("✅ [NC] Simulação concluída")
-                        
-                        contadores["NC"] = 1  # Simulado
+                        log_cetip.append("📄 EMISSÃO NC")
+                        log_cetip.append("─" * 60)
+                        qtd_nc = run_emissao_nc(log_cetip, tmp_path_obj, pasta_saida_cetip)
+                        contadores["NC"] = qtd_nc
                         log_cetip.append("")
                     
                     # Processar Depósito
                     if executar_dep:
                         log_cetip.append("─" * 60)
-                        log_cetip.append("💰 [DEP] Iniciando Emissão Depósito...")
+                        log_cetip.append("💰 EMISSÃO DEPÓSITO")
                         log_cetip.append("─" * 60)
-                        log_cetip.append(f"👤 Papel do participante: {papel_deposito}")
-                        log_cetip.append("⚙️ Configuração: Sheet index = 1 (2ª aba)")
-                        log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
-                        log_cetip.append("")
-                        
-                        if papel_deposito == "ambos":
-                            log_cetip.append("⚙️ Gerando arquivo para EMISSOR (02)...")
-                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_cetip.name)[0]}_EMISSOR.txt")
-                            log_cetip.append("⚙️ Gerando arquivo para DISTRIBUIDOR (03)...")
-                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_cetip.name)[0]}_DISTRIBUIDOR.txt")
-                            contadores["Depósito"] = 2  # Simulado
-                        else:
-                            papel_nome = "EMISSOR" if papel_deposito == "02" else "DISTRIBUIDOR"
-                            log_cetip.append(f"⚙️ Gerando arquivo para {papel_nome} ({papel_deposito})...")
-                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_cetip.name)[0]}_{papel_nome}.txt")
-                            contadores["Depósito"] = 1  # Simulado
-                        
-                        log_cetip.append("")
-                        log_cetip.append("⚠️ Integração com módulo emissao_deposito.py em desenvolvimento")
-                        log_cetip.append("✅ [DEP] Simulação concluída")
+                        qtd_dep = run_emissao_deposito(log_cetip, tmp_path_obj, papel_deposito, pasta_saida_cetip)
+                        contadores["Depósito"] = qtd_dep
                         log_cetip.append("")
                     
                     # Processar Compra/Venda
                     if executar_cv:
                         log_cetip.append("─" * 60)
-                        log_cetip.append("📊 [CV] Iniciando Operação de Venda...")
+                        log_cetip.append("📊 OPERAÇÃO DE VENDA")
                         log_cetip.append("─" * 60)
-                        log_cetip.append("⚙️ Configuração: Sheet index = 1 (2ª aba)")
-                        log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
-                        log_cetip.append(f"   Saída: Venda_{os.path.splitext(arquivo_cetip.name)[0]}.txt")
-                        log_cetip.append("")
-                        log_cetip.append("⚠️ Integração com módulo operacao_compra_venda.py em desenvolvimento")
-                        log_cetip.append("✅ [CV] Simulação concluída")
-                        
-                        contadores["Venda"] = 1  # Simulado
+                        qtd_cv = run_compra_venda(log_cetip, tmp_path_obj, pasta_saida_cetip)
+                        contadores["Venda"] = qtd_cv
                         log_cetip.append("")
                     
                     # Processar CCI
                     if executar_cci:
                         log_cetip.append("─" * 60)
-                        log_cetip.append("📝 [CCI] Iniciando Emissão CCI...")
+                        log_cetip.append("📝 EMISSÃO CCI")
                         log_cetip.append("─" * 60)
-                        log_cetip.append(f"⚙️ Operação: {operacao_cci}")
-                        log_cetip.append(f"⚙️ Modalidade: {modalidade_cci}")
-                        log_cetip.append("⚙️ Configuração: Sheet index = 0 (aba principal)")
-                        log_cetip.append("⚙️ Participante: LIMINETRUSTDTVM")
-                        log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
-                        log_cetip.append(f"   Saída: CCI_{os.path.splitext(arquivo_cetip.name)[0]}.txt")
-                        log_cetip.append("")
-                        log_cetip.append("⚠️ Integração com módulo CCI.py em desenvolvimento")
-                        log_cetip.append("✅ [CCI] Simulação concluída")
-                        
-                        contadores["CCI"] = 1  # Simulado
+                        qtd_cci = run_cci(log_cetip, tmp_path_obj, operacao_cci, modalidade_cci, pasta_saida_cetip)
+                        contadores["CCI"] = qtd_cci
                         log_cetip.append("")
                     
                     # Processar V2C
                     if executar_v2c:
                         log_cetip.append("─" * 60)
-                        log_cetip.append("🔄 [V2C] Iniciando Conversor V2C (GOORO)...")
+                        log_cetip.append("🔄 CONVERSOR V2C (GOORO)")
                         log_cetip.append("─" * 60)
-                        log_cetip.append("⚙️ Conversão: Venda → Compra")
-                        log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
-                        
-                        # Nome do arquivo de saída
-                        if arquivo_cetip.name.endswith("_venda.txt"):
-                            nome_saida = arquivo_cetip.name[:-10] + "_compra.txt"
-                        else:
-                            nome_saida = os.path.splitext(arquivo_cetip.name)[0] + "_compra.txt"
-                        
-                        log_cetip.append(f"   Saída: {nome_saida}")
-                        log_cetip.append("")
-                        log_cetip.append("⚠️ Integração com módulo conversor_v2.py em desenvolvimento")
-                        log_cetip.append("✅ [V2C] Simulação concluída")
+                        run_conversor_v2c(log_cetip, tmp_path_obj, pasta_saida_cetip)
                         log_cetip.append("ℹ️ Conversor V2C não participa da contagem de emissões")
                         log_cetip.append("")
                     
                     # Limpar arquivo temporário
-                    os.unlink(tmp_path)
+                    try:
+                        os.unlink(tmp_path)
+                        log_cetip.append("🗑️ Arquivo temporário removido")
+                    except Exception as e:
+                        log_cetip.append(f"⚠️ Aviso: não foi possível remover arquivo temporário: {e}")
                     
                     # Resumo final
                     total_emissoes = contadores["NC"] + contadores["Depósito"] + contadores["Venda"] + contadores["CCI"]
