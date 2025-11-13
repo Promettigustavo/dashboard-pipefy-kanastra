@@ -776,10 +776,13 @@ def verificar_bases_dados(auto_download=True):
     return bases, mensagens
 
 # ===== IMPORTS DOS MÓDULOS =====
-@st.cache_resource
 def import_module_lazy(module_name):
-    """Importa um módulo sob demanda (lazy loading) com cache"""
+    """Importa um módulo sob demanda (lazy loading) SEM cache para permitir reloads"""
     try:
+        # Forçar reload se o módulo já foi importado antes
+        if module_name in sys.modules:
+            import importlib
+            return importlib.reload(sys.modules[module_name]), None
         return __import__(module_name), None
     except Exception as e:
         return None, str(e)
@@ -2225,13 +2228,6 @@ elif aba_selecionada == "📎 Comprovantes":
                 pipe_atual = 0
                 
                 st.info(f"📅 Processando cards com data de referência: **{data_busca_str}**")
-                
-                # Limpar cache dos módulos antes de importar (força reload com código atualizado)
-                st.write("🔍 DEBUG: Limpando cache de módulos...")
-                if 'Anexarcomprovantespipe' in st.session_state:
-                    del st.session_state['Anexarcomprovantespipe']
-                if 'Anexarcomprovantespipetaxas' in st.session_state:
-                    del st.session_state['Anexarcomprovantespipetaxas']
                 
                 # Criar clientes Santander para todos os fundos configurados
                 st.write("🔍 DEBUG: Criando clientes Santander...")
