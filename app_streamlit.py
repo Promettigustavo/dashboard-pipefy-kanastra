@@ -2074,24 +2074,29 @@ elif aba_selecionada == "📎 Comprovantes":
                                         for idx, payment_receipt in enumerate(receipts_list, 1):
                                             try:
                                                 # A estrutura é: paymentsReceipts[].payment.paymentId
-                                                payment_id = payment_receipt.get('payment', {}).get('paymentId')
-                                                payee_name = payment_receipt.get('payment', {}).get('payee', {}).get('name', 'Desconhecido')
-                                                amount = payment_receipt.get('payment', {}).get('paymentAmountInfo', {}).get('direct', {}).get('amount', '0.00')
+                                                payment_data = payment_receipt.get('payment', {})
+                                                payment_id = payment_data.get('paymentId')
+                                                payee_name = payment_data.get('payee', {}).get('name', 'Desconhecido')
+                                                amount = payment_data.get('paymentAmountInfo', {}).get('direct', {}).get('amount', '0.00')
                                                 
                                                 st.write(f"  📄 {idx}/{qtd}: {payee_name} - R$ {amount}")
                                                 
                                                 if payment_id:
-                                                    pdf_path = cliente.baixar_comprovante(
-                                                        receipt_id=payment_id,
-                                                        pasta_destino=pasta_destino
+                                                    # Usar buscar_e_baixar_comprovante que faz o fluxo completo
+                                                    pdf_path = cliente.buscar_e_baixar_comprovante(
+                                                        payment_id=payment_id,
+                                                        aguardar=True,
+                                                        max_retries=3
                                                     )
                                                     if pdf_path:
                                                         comprovantes_baixados += 1
-                                                        st.write(f"    ✅ Baixado: {pdf_path.name}")
+                                                        st.write(f"    ✅ Baixado com sucesso")
+                                                    else:
+                                                        st.warning(f"    ⚠️ Não foi possível baixar")
                                                 else:
                                                     st.warning(f"    ⚠️ paymentId não encontrado")
                                             except Exception as e_download:
-                                                st.warning(f"⚠️ {fundo_id}: Erro ao baixar comprovante: {str(e_download)}")
+                                                st.warning(f"    ⚠️ Erro: {str(e_download)}")
                                         
                                         log_placeholder.success(f"✅ {fundo_id}: {comprovantes_baixados} de {qtd} comprovante(s) baixado(s)")
                                     else:
