@@ -1860,20 +1860,25 @@ elif aba_selecionada == "📎 Comprovantes":
         SANTANDER_FUNDOS, credenciais_source = get_santander_credentials()
         
         if credenciais_source == "none":
-            st.warning("⚙️ Credenciais Santander não configuradas")
-            with st.expander("ℹ️ Como configurar credenciais", expanded=False):
+            st.error("❌ **CREDENCIAIS NÃO CONFIGURADAS** - Fundos Santander indisponíveis")
+            st.markdown("""
+            <div style='background-color: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;'>
+                <h4 style='margin: 0 0 0.5rem 0; color: #856404;'>⚠️ Ação Necessária</h4>
+                <p style='margin: 0; color: #856404;'>
+                    <strong>Streamlit Cloud:</strong><br>
+                    1. Abra o arquivo <code>SECRETS_TOML_COMPLETO.toml</code> na raiz do projeto<br>
+                    2. Copie <strong>TODO</strong> o conteúdo (Ctrl+A, Ctrl+C)<br>
+                    3. Vá em <strong>Settings > Secrets</strong> no painel do Streamlit Cloud<br>
+                    4. Cole o conteúdo e clique em <strong>Save</strong><br>
+                    5. Aguarde o app reiniciar (1-2 minutos)
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.expander("📖 Desenvolvimento Local", expanded=False):
                 st.markdown("""
-                **Desenvolvimento Local:**
                 - Crie o arquivo `credenciais_bancos.py` na raiz do projeto
                 - Consulte `CREDENTIALS_SETUP.md` para detalhes
-                
-                **Streamlit Cloud:**
-                - Acesse Settings > Secrets no dashboard
-                - Copie o conteúdo de `.streamlit/secrets.toml.example`
-                - Substitua com suas credenciais reais
-                - Salve e o app reiniciará automaticamente
-                
-                📚 **Documentação completa**: `CREDENTIALS_SETUP.md`
                 """)
             fundos_disponiveis = []
         elif credenciais_source.startswith("error"):
@@ -1907,15 +1912,22 @@ elif aba_selecionada == "📎 Comprovantes":
         
         st.caption(f"📊 {len(fundos_selecionados)} de {len(fundos_filtrados)} fundos selecionados")
         
+        # Alerta se nenhum fundo selecionado
+        if len(fundos_selecionados) == 0 and len(fundos_disponiveis) > 0:
+            st.info("💡 Selecione pelo menos 1 fundo para habilitar a busca")
+        
         st.markdown("---")
         
         # Botão Buscar Comprovantes
+        btn_disabled = len(fundos_selecionados) == 0
+        btn_label = "🔍 Buscar Comprovantes via API" if not btn_disabled else "⚠️ Selecione fundos para buscar"
+        
         if st.button(
-            "🔍 Buscar Comprovantes via API",
+            btn_label,
             type="primary",
             use_container_width=True,
             key="btn_buscar_santander",
-            disabled=len(fundos_selecionados) == 0
+            disabled=btn_disabled
         ):
             st.markdown("---")
             st.markdown("### 🔍 Busca de Comprovantes")
