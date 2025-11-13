@@ -489,6 +489,88 @@ class SantanderComprovantes:
         logger.error(f"Timeout: PDF não ficou disponível em {max_tentativas * intervalo}s")
         return None
     
+    def consultar_comprovantes_existentes(self, payment_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Consulta se já existem comprovantes disponíveis para um payment_id
+        SEM solicitar nova geração e SEM fazer download.
+        
+        Args:
+            payment_id: ID do pagamento
+            
+        Returns:
+            Dict com informações do comprovante se existir, None caso contrário
+            Estrutura retornada:
+            {
+                'payment_id': str,
+                'request_id': str,
+                'status': str,
+                'url_download': str,
+                'disponivel': bool
+            }
+        """
+        try:
+            # Primeiro, tenta listar os file_requests existentes
+            endpoint = f"/consult_payment_receipts/v1/payment_receipts/{payment_id}/file_requests"
+            url = f"{self.api_base}{endpoint}"
+            
+            headers = self._get_headers()
+            cert_tuple = self.auth._get_cert_tuple()
+            
+            logger.info(f"Consultando comprovantes existentes para payment_id: {payment_id}")
+            
+            # GET para listar requests existentes
+            response = requests.get(
+                url,
+                headers=headers,
+                cert=cert_tuple,
+                verify=True,
+                timeout=35
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                # A API pode retornar uma lista ou objeto único
+                requests_list = result.get('requests', [])
+                
+                if not requests_list:
+                    logger.info(f"Nenhum comprovante existente encontrado para {payment_id}")
+                    return None
+                
+                # Pegar o primeiro request (mais recente)
+                first_request = requests_list[0] if isinstance(requests_list, list) else requests_list
+                
+                request_id = first_request.get('request', {}).get('requestId')
+                status_info = first_request.get('file', {}).get('statusInfo', {})
+                status_code = status_info.get('statusCode')
+                file_repo = first_request.get('file', {}).get('fileRepository', {})
+                url_download = file_repo.get('location')
+                
+                disponivel = status_code == 'AVAILABLE' and url_download is not None
+                
+                logger.info(f"✅ Comprovante encontrado - request_id: {request_id}, status: {status_code}, disponível: {disponivel}")
+                
+                return {
+                    'payment_id': payment_id,
+                    'request_id': request_id,
+                    'status': status_code,
+                    'url_download': url_download,
+                    'disponivel': disponivel
+                }
+            
+            elif response.status_code == 404:
+                logger.info(f"Nenhum file_request encontrado para {payment_id}")
+                return None
+            
+            else:
+                logger.warning(f"Status inesperado ao consultar: {response.status_code}")
+                logger.warning(f"Resposta: {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Erro ao consultar comprovantes existentes: {type(e).__name__}: {e}")
+            return None
+    
     def buscar_e_baixar_comprovante(self, payment_id: str, 
                                      aguardar: bool = True,
                                      max_retries: int = 3,
@@ -527,34 +609,53 @@ class SantanderComprovantes:
         logger.info(f"{'='*60}")
         
         try:
-            # 1. Solicita geração do PDF
-            logger.info("Etapa 1/3: Solicitando geração do PDF...")
-            result = self.solicitar_geracao_pdf(payment_id)
-            request_id = result.get('request', {}).get('requestId')
+            # ETAPA 0: Verificar se já existe comprovante disponível
+            logger.info("Etapa 0/3: Verificando se já existe comprovante disponível...")
+            comprovante_existente = self.consultar_comprovantes_existentes(payment_id)
             
-            if not request_id:
-                logger.error("❌ Não foi possível obter request_id")
-                logger.error(f"Response: {json.dumps(result, indent=2)}")
-                return None
+            request_id = None
+            url_download = None
             
-            logger.info(f"✅ Request ID obtido: {request_id}")
-            
-            # 2. Aguarda PDF ficar disponível (se solicitado)
-            logger.info("Etapa 2/3: Aguardando PDF ficar disponível...")
-            if aguardar:
-                url_download = self.aguardar_pdf_disponivel(payment_id, request_id)
+            if comprovante_existente and comprovante_existente.get('disponivel'):
+                # Comprovante já existe e está disponível
+                logger.info(f"✅ Comprovante já existe e está disponível!")
+                request_id = comprovante_existente.get('request_id')
+                url_download = comprovante_existente.get('url_download')
+                logger.info(f"✅ Request ID existente: {request_id}")
+                logger.info("⏩ Pulando etapas 1 e 2 (solicitar e aguardar)")
+                
             else:
-                # Consulta uma vez apenas
-                result = self.consultar_status_pdf(payment_id, request_id)
-                url_download = result.get('file', {}).get('fileRepository', {}).get('location')
+                # Comprovante não existe ou não está disponível - precisa solicitar
+                logger.info("📄 Nenhum comprovante disponível. Solicitando nova geração...")
+                
+                # 1. Solicita geração do PDF
+                logger.info("Etapa 1/3: Solicitando geração do PDF...")
+                result = self.solicitar_geracao_pdf(payment_id)
+                request_id = result.get('request', {}).get('requestId')
+                
+                if not request_id:
+                    logger.error("❌ Não foi possível obter request_id")
+                    logger.error(f"Response: {json.dumps(result, indent=2)}")
+                    return None
+                
+                logger.info(f"✅ Request ID obtido: {request_id}")
+                
+                # 2. Aguarda PDF ficar disponível (se solicitado)
+                logger.info("Etapa 2/3: Aguardando PDF ficar disponível...")
+                if aguardar:
+                    url_download = self.aguardar_pdf_disponivel(payment_id, request_id)
+                else:
+                    # Consulta uma vez apenas
+                    result = self.consultar_status_pdf(payment_id, request_id)
+                    url_download = result.get('file', {}).get('fileRepository', {}).get('location')
+                
+                if not url_download:
+                    logger.error("❌ URL de download não disponível")
+                    return None
+                
+                logger.info(f"✅ URL de download obtida")
             
-            if not url_download:
-                logger.error("❌ URL de download não disponível")
-                return None
-            
-            logger.info(f"✅ URL de download obtida")
-            
-            # 3. Baixa o PDF com retry
+            # 3. Baixa o PDF com retry (seja comprovante novo ou existente)
             logger.info(f"Etapa 3/3: Baixando PDF (max {max_retries} tentativas)...")
             logger.info("⚠️ IMPORTANTE: Baixando imediatamente pois URL expira em 5 minutos!")
             
