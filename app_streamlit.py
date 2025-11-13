@@ -2060,26 +2060,40 @@ elif aba_selecionada == "📎 Comprovantes":
                                     
                                     # Debug: Mostrar estrutura da resposta
                                     st.write(f"🔍 DEBUG: Tipo de resposta: {type(comprovantes)}")
-                                    st.write(f"🔍 DEBUG: Conteúdo: {comprovantes}")
+                                    if comprovantes and 'paymentsReceipts' in comprovantes:
+                                        st.write(f"🔍 DEBUG: Encontrado {len(comprovantes['paymentsReceipts'])} pagamentos")
                                     
                                     if comprovantes:
-                                        qtd = len(comprovantes.get('receipts', []))
+                                        # A API retorna os comprovantes em 'paymentsReceipts'
+                                        receipts_list = comprovantes.get('paymentsReceipts', [])
+                                        qtd = len(receipts_list)
                                         st.write(f"📊 Total de comprovantes: {qtd}")
                                         comprovantes_encontrados += qtd
                                         
                                         # Baixar cada comprovante
-                                        for comp in comprovantes.get('receipts', []):
+                                        for idx, payment_receipt in enumerate(receipts_list, 1):
                                             try:
-                                                pdf_path = cliente.baixar_comprovante(
-                                                    receipt_id=comp['receipt_id'],
-                                                    pasta_destino=pasta_destino
-                                                )
-                                                if pdf_path:
-                                                    comprovantes_baixados += 1
+                                                # A estrutura é: paymentsReceipts[].payment.paymentId
+                                                payment_id = payment_receipt.get('payment', {}).get('paymentId')
+                                                payee_name = payment_receipt.get('payment', {}).get('payee', {}).get('name', 'Desconhecido')
+                                                amount = payment_receipt.get('payment', {}).get('paymentAmountInfo', {}).get('direct', {}).get('amount', '0.00')
+                                                
+                                                st.write(f"  📄 {idx}/{qtd}: {payee_name} - R$ {amount}")
+                                                
+                                                if payment_id:
+                                                    pdf_path = cliente.baixar_comprovante(
+                                                        receipt_id=payment_id,
+                                                        pasta_destino=pasta_destino
+                                                    )
+                                                    if pdf_path:
+                                                        comprovantes_baixados += 1
+                                                        st.write(f"    ✅ Baixado: {pdf_path.name}")
+                                                else:
+                                                    st.warning(f"    ⚠️ paymentId não encontrado")
                                             except Exception as e_download:
-                                                st.warning(f"⚠️ {fundo_id}: Erro ao baixar comprovante {comp.get('receipt_id')}: {str(e_download)}")
+                                                st.warning(f"⚠️ {fundo_id}: Erro ao baixar comprovante: {str(e_download)}")
                                         
-                                        log_placeholder.success(f"✅ {fundo_id}: {qtd} comprovante(s) encontrado(s)")
+                                        log_placeholder.success(f"✅ {fundo_id}: {comprovantes_baixados} de {qtd} comprovante(s) baixado(s)")
                                     else:
                                         log_placeholder.info(f"ℹ️ {fundo_id}: Nenhum comprovante encontrado")
                                 
