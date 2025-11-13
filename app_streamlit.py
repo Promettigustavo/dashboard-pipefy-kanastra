@@ -345,41 +345,6 @@ if aba_selecionada == "💰 Liquidação":
                 key="modulo_auto",
                 horizontal=False
             )
-            
-            # Descrições
-            descricoes_auto = {
-                "Auto Liquidação": """
-                **Fluxo completo:**
-                1. Busca cards na fase "Aguardando Comprovantes"
-                2. Consulta API Santander para cada fundo (período configurado)
-                3. Faz match automático (CNPJ + Valor + Beneficiário)
-                4. Anexa comprovantes aos cards
-                5. Move cards para próxima fase
-                """,
-                "Auto Taxas": """
-                **Fluxo completo:**
-                1. Busca cards do pipe de taxas
-                2. Processa taxas via API
-                3. Anexa comprovantes quando disponíveis
-                4. Atualiza status dos cards
-                """,
-                "Auto Amortização": """
-                **Fluxo completo:**
-                1. Busca cards de amortização pendentes
-                2. Processa cálculos de amortização
-                3. Atualiza valores nos cards
-                4. Gera relatórios
-                """,
-                "Auto Taxas ANBIMA": """
-                **Fluxo completo:**
-                1. Busca taxas ANBIMA do dia
-                2. Atualiza cards com taxas atualizadas
-                3. Gera relatório de taxas
-                """
-            }
-            
-            with st.expander("ℹ️ Sobre esta automação", expanded=False):
-                st.markdown(descricoes_auto.get(modulo_auto, ""))
         
         with col2:
             st.markdown("### ⚙️ Configurações")
@@ -394,16 +359,6 @@ if aba_selecionada == "💰 Liquidação":
             )
             
             st.caption("💡 Data que será incluída no arquivo de processamento")
-            
-            st.markdown("---")
-            
-            # Opções de processamento (checkboxes visíveis)
-            st.markdown("**⚙️ Opções de Processamento:**")
-            col_opt1, col_opt2 = st.columns(2)
-            with col_opt1:
-                anexar_comp = st.checkbox("📎 Anexar comprovantes", value=True, key="anexar_comp_auto")
-            with col_opt2:
-                apenas_simular = st.checkbox("🔍 Apenas simular", value=False, key="simular_auto")
             
             st.markdown("---")
             
