@@ -463,11 +463,23 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                     self.cert_path = str(Path(__file__).parent / self.cert_path)
                 if not Path(self.key_path).is_absolute():
                     self.key_path = str(Path(__file__).parent / self.key_path)
+                
+                # Validar que os arquivos existem
+                if not Path(self.cert_path).exists():
+                    raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
+                if not Path(self.key_path).exists():
+                    raise FileNotFoundError(f"Chave privada não encontrada: {self.key_path}")
                     
             # Opção 2: cert_path e key_path específicos do fundo (modo local)
             elif "cert_path" in fundo and "key_path" in fundo:
                 self.cert_path = fundo["cert_path"]
                 self.key_path = fundo["key_path"]
+                
+                # Validar que os arquivos existem
+                if not Path(self.cert_path).exists():
+                    raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
+                if not Path(self.key_path).exists():
+                    raise FileNotFoundError(f"Chave privada não encontrada: {self.key_path}")
                     
             # Opção 3: Conteúdo PEM em base64 no secrets (fallback)
             elif "cert_base64" in fundo and "key_base64" in fundo:
@@ -499,6 +511,7 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             """Obtém token de autenticação da API Santander"""
             import requests
             from datetime import datetime, timedelta
+            import logging
             
             # Verificar se já tem token válido
             if hasattr(self, '_token') and hasattr(self, '_token_expiry'):
@@ -507,18 +520,56 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             
             token_url = self.base_urls[self.ambiente]["token"]
             
+            # Log detalhado para debug
+            print(f"DEBUG: Obtendo token para fundo {self.fundo_id}")
+            print(f"DEBUG: URL: {token_url}")
+            print(f"DEBUG: Client ID: {self.client_id[:20]}...")
+            print(f"DEBUG: Cert path: {self.cert_path}")
+            print(f"DEBUG: Key path: {self.key_path}")
+            print(f"DEBUG: Cert exists: {Path(self.cert_path).exists()}")
+            print(f"DEBUG: Key exists: {Path(self.key_path).exists()}")
+            
+            # Verificar se certificados existem
+            if not Path(self.cert_path).exists():
+                raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
+            if not Path(self.key_path).exists():
+                raise FileNotFoundError(f"Chave privada não encontrada: {self.key_path}")
+            
+            # Ler e validar formato dos certificados
+            try:
+                with open(self.cert_path, 'r') as f:
+                    cert_content = f.read()
+                    if not cert_content.startswith('-----BEGIN CERTIFICATE-----'):
+                        raise ValueError(f"Certificado inválido: não começa com -----BEGIN CERTIFICATE-----")
+                    print(f"DEBUG: Certificado OK ({len(cert_content)} bytes)")
+                    
+                with open(self.key_path, 'r') as f:
+                    key_content = f.read()
+                    if not (key_content.startswith('-----BEGIN RSA PRIVATE KEY-----') or 
+                           key_content.startswith('-----BEGIN PRIVATE KEY-----')):
+                        raise ValueError(f"Chave privada inválida: formato não reconhecido")
+                    print(f"DEBUG: Chave privada OK ({len(key_content)} bytes)")
+            except Exception as e:
+                raise ValueError(f"Erro ao ler certificados: {str(e)}")
+            
             data = {
                 'grant_type': 'client_credentials',
                 'client_id': self.client_id,
                 'client_secret': self.client_secret
             }
             
-            response = requests.post(
-                token_url,
-                data=data,
-                cert=(self.cert_path, self.key_path),
-                verify=True
-            )
+            try:
+                response = requests.post(
+                    token_url,
+                    data=data,
+                    cert=(self.cert_path, self.key_path),
+                    verify=True,
+                    timeout=30
+                )
+            except requests.exceptions.SSLError as e:
+                # Log detalhado do erro SSL
+                print(f"ERROR SSL: {str(e)}")
+                raise Exception(f"Erro SSL ao conectar com Santander: {str(e)}. Verifique se os certificados estão corretos e no formato PEM válido.")
             
             if response.status_code == 200:
                 token_data = response.json()
