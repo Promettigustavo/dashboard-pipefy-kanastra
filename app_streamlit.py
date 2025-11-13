@@ -15,6 +15,326 @@ import tempfile
 import os
 import requests
 import json
+import importlib
+import importlib.util
+
+# ===== Funções Helper CETIP =====
+def _import_local_module(mod_name: str, base_path: Path = None):
+    """
+    Importa módulo local CETIP.
+    Se base_path não fornecido, procura na pasta 'Projeto CETIP' relativa ao script.
+    """
+    if base_path is None:
+        # Tenta encontrar a pasta Projeto CETIP
+        current_dir = Path(__file__).parent
+        cetip_path = current_dir.parent / "Projeto CETIP"
+        if not cetip_path.exists():
+            # Fallback: mesmo diretório
+            cetip_path = current_dir
+    else:
+        cetip_path = base_path
+    
+    local_path = cetip_path / f"{mod_name}.py"
+    
+    if local_path.exists():
+        spec = importlib.util.spec_from_file_location(mod_name, str(local_path))
+        if spec and spec.loader:
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[mod_name] = mod
+            spec.loader.exec_module(mod)
+            return mod
+    
+    # Fallback: import normal
+    return importlib.import_module(mod_name)
+
+def _count_registros_em_arquivo(path_arquivo: Path, tipo: str) -> int:
+    """
+    Conta quantos registros foram gerados no arquivo CETIP:
+    - tipo 'nc'   -> começa com 'NC   1'
+    - tipo 'mda'  -> começa com 'MDA  1' (Depósito/Venda)
+    - tipo 'cci'  -> começa com 'CCI  1'
+    """
+    if not path_arquivo or not path_arquivo.exists():
+        return 0
+    
+    if tipo == "nc":
+        prefixos = ["NC   1"]
+    elif tipo == "mda":
+        prefixos = ["MDA  1"]
+    elif tipo == "cci":
+        prefixos = ["CCI  1"]
+    else:
+        prefixos = []
+    
+    total = 0
+    try:
+        with open(path_arquivo, "r", encoding="utf-8", errors="ignore") as f:
+            for ln in f:
+                if any(ln.startswith(p) for p in prefixos):
+                    total += 1
+    except Exception:
+        try:
+            with open(path_arquivo, "r", errors="ignore") as f:
+                for ln in f:
+                    if any(ln.startswith(p) for p in prefixos):
+                        total += 1
+        except Exception:
+            return 0
+    return total
+
+def _stem_clean(p: Path) -> str:
+    """Nome base sem extensão, limpo para compor arquivos de saída."""
+    return p.stem.replace(" ", "_")
+
+def _ensure_dir(p: Path):
+    """Cria diretório se não existir."""
+    p.mkdir(parents=True, exist_ok=True)
+
+def _choose_out_dir_or_sibling(selected_path: Path, out_dir: str | None) -> Path:
+    """
+    Retorna a pasta onde salvar:
+    - se out_dir estiver preenchido: usa out_dir
+    - caso contrário: pasta da planilha/arquivo de entrada
+    """
+    if out_dir:
+        out = Path(out_dir).expanduser()
+        _ensure_dir(out)
+        return out
+    return selected_path.parent
+
+# ===== Funções de Processamento CETIP =====
+def run_emissao_nc(log_list: list, selected_path: Path, out_dir: str | None) -> int:
+    """Executa Emissão NC."""
+    try:
+        log_list.append("[NC] Iniciando Emissão de NC...")
+        nc_mod = _import_local_module("EmissaoNC_v2")
+        
+        out_folder = _choose_out_dir_or_sibling(selected_path, out_dir)
+        out_path = out_folder / f"NC_{_stem_clean(selected_path)}.txt"
+        
+        if hasattr(nc_mod, "main"):
+            nc_mod.main(
+                arquivo_saida=str(out_path),
+                caminho_entrada=str(selected_path),
+                sheet_index=1  # 2ª aba
+            )
+            log_list.append(f"✅ Arquivo gerado: {out_path.name}")
+        else:
+            raise RuntimeError("O módulo EmissaoNC_v2 não possui função main().")
+        
+        qtd_nc = _count_registros_em_arquivo(out_path, "nc")
+        log_list.append(f"📊 Emissões geradas: {qtd_nc}")
+        return qtd_nc
+    except Exception as e:
+        log_list.append(f"❌ ERRO: {str(e)}")
+        log_list.append(traceback.format_exc())
+        return 0
+
+def _rodar_dep_uma_vez(dep_mod, selected_path: Path, out_path: Path, papel: str, log_list: list):
+    """Executa depósito para um papel específico."""
+    if hasattr(dep_mod, "gerar_emissao_deposito_from_excel"):
+        try:
+            dep_mod.gerar_emissao_deposito_from_excel(
+                caminho_planilha=selected_path,
+                sheet_index=1,
+                arquivo_saida=out_path,
+                data_operacao=None,
+                papel_participante=papel,
+            )
+        except TypeError:
+            setattr(dep_mod, "PAPEL_PARTICIPANTE", papel)
+            dep_mod.gerar_emissao_deposito_from_excel(
+                caminho_planilha=selected_path,
+                sheet_index=1,
+                arquivo_saida=out_path,
+                data_operacao=None,
+            )
+        except Exception as e1:
+            log_list.append(f"⚠️ Falhou sheet_index=1: {e1.__class__.__name__}. Tentando aba 0...")
+            try:
+                dep_mod.gerar_emissao_deposito_from_excel(
+                    caminho_planilha=selected_path,
+                    sheet_index=0,
+                    arquivo_saida=out_path,
+                    data_operacao=None,
+                    papel_participante=papel,
+                )
+            except TypeError:
+                setattr(dep_mod, "PAPEL_PARTICIPANTE", papel)
+                dep_mod.gerar_emissao_deposito_from_excel(
+                    caminho_planilha=selected_path,
+                    sheet_index=0,
+                    arquivo_saida=out_path,
+                    data_operacao=None,
+                )
+
+def run_emissao_deposito(log_list: list, selected_path: Path, papel_option: str, out_dir: str | None) -> int:
+    """Executa Emissão Depósito."""
+    try:
+        log_list.append(f"[DEP] Iniciando Emissão Depósito (Papel: {papel_option})...")
+        dep_mod = _import_local_module("emissao_deposito")
+        out_folder = _choose_out_dir_or_sibling(selected_path, out_dir)
+        
+        total_emitidas = 0
+        
+        if papel_option == "ambos":
+            # Emissor
+            out_path_em = out_folder / f"DEP_{_stem_clean(selected_path)}_EMISSOR.txt"
+            _rodar_dep_uma_vez(dep_mod, selected_path, out_path_em, "02", log_list)
+            log_list.append(f"✅ Arquivo gerado (Emissor): {out_path_em.name}")
+            qtd_em = _count_registros_em_arquivo(out_path_em, "mda")
+            log_list.append(f"📊 Emissões (Emissor): {qtd_em}")
+            total_emitidas += qtd_em
+            
+            # Distribuidor
+            out_path_di = out_folder / f"DEP_{_stem_clean(selected_path)}_DISTRIBUIDOR.txt"
+            _rodar_dep_uma_vez(dep_mod, selected_path, out_path_di, "03", log_list)
+            log_list.append(f"✅ Arquivo gerado (Distribuidor): {out_path_di.name}")
+            qtd_di = _count_registros_em_arquivo(out_path_di, "mda")
+            log_list.append(f"📊 Emissões (Distribuidor): {qtd_di}")
+            total_emitidas += qtd_di
+        else:
+            papel_nome = "EMISSOR" if papel_option == "02" else "DISTRIBUIDOR"
+            out_path = out_folder / f"DEP_{_stem_clean(selected_path)}_{papel_nome}.txt"
+            _rodar_dep_uma_vez(dep_mod, selected_path, out_path, papel_option, log_list)
+            log_list.append(f"✅ Arquivo gerado ({papel_nome}): {out_path.name}")
+            total_emitidas = _count_registros_em_arquivo(out_path, "mda")
+            log_list.append(f"📊 Emissões geradas: {total_emitidas}")
+        
+        return total_emitidas
+    except Exception as e:
+        log_list.append(f"❌ ERRO: {str(e)}")
+        log_list.append(traceback.format_exc())
+        return 0
+
+def run_compra_venda(log_list: list, selected_path: Path, out_dir: str | None) -> int:
+    """Executa Operação de Venda."""
+    try:
+        log_list.append("[CV] Iniciando Operação de Venda...")
+        cv_mod = None
+        for mod_name in ["operacao_compra_venda", "Compra_Venda", "compra_venda"]:
+            try:
+                cv_mod = _import_local_module(mod_name)
+                break
+            except:
+                continue
+        
+        if cv_mod is None:
+            raise ModuleNotFoundError("Módulo de Compra/Venda não encontrado")
+        
+        out_folder = _choose_out_dir_or_sibling(selected_path, out_dir)
+        out_path = out_folder / f"Venda_{_stem_clean(selected_path)}.txt"
+        
+        if hasattr(cv_mod, "gerar_compra_venda_from_excel"):
+            try:
+                cv_mod.gerar_compra_venda_from_excel(
+                    caminho_planilha=selected_path,
+                    sheet_index=1,
+                    arquivo_saida=out_path,
+                    data_operacao=None,
+                )
+                log_list.append(f"✅ Arquivo gerado: {out_path.name}")
+            except:
+                cv_mod.gerar_compra_venda_from_excel(
+                    caminho_planilha=selected_path,
+                    sheet_index=0,
+                    arquivo_saida=out_path,
+                    data_operacao=None,
+                )
+                log_list.append(f"✅ Arquivo gerado (aba 0): {out_path.name}")
+        
+        qtd_cv = _count_registros_em_arquivo(out_path, "mda")
+        log_list.append(f"📊 Emissões geradas: {qtd_cv}")
+        return qtd_cv
+    except Exception as e:
+        log_list.append(f"❌ ERRO: {str(e)}")
+        log_list.append(traceback.format_exc())
+        return 0
+
+def meu_numero_factory_from_state(out_dir: str | None, selected_path: Path):
+    """Fábrica do 'meu número' para CCI."""
+    state_dir = Path(out_dir) if out_dir else selected_path.parent
+    state_dir.mkdir(parents=True, exist_ok=True)
+    state_file = state_dir / "meu_numero_state.txt"
+    
+    def _next() -> str:
+        today = dt.date.today().isoformat()
+        if state_file.exists():
+            try:
+                last_day, last_num = state_file.read_text(encoding="utf-8").strip().split(",")
+                n = (int(last_num) + 1) if last_day == today else 1
+            except:
+                n = 1
+        else:
+            n = 1
+        state_file.write_text(f"{today},{n}", encoding="utf-8")
+        return str(n).zfill(10)
+    
+    return _next
+
+def run_cci(log_list: list, selected_path: Path, operacao_option: str, modalidade_option: str, out_dir: str | None) -> int:
+    """Executa Emissão CCI."""
+    try:
+        log_list.append(f"[CCI] Iniciando Emissão CCI (Operação: {operacao_option} | Modalidade: {modalidade_option})...")
+        cci_mod = _import_local_module("CCI")
+        
+        out_folder = _choose_out_dir_or_sibling(selected_path, out_dir)
+        out_path = out_folder / f"CCI_{_stem_clean(selected_path)}.txt"
+        
+        fn_meu = meu_numero_factory_from_state(out_dir, selected_path)
+        
+        if hasattr(cci_mod, "registros_from_excel") and hasattr(cci_mod, "gerar_arquivo_cci"):
+            regs = cci_mod.registros_from_excel(
+                path_xlsx=str(selected_path),
+                operacao=operacao_option,
+                modalidade=modalidade_option,
+                meu_numero_factory=fn_meu,
+                sheet_index=0,
+            )
+            conteudo = cci_mod.gerar_arquivo_cci(regs, participante="LIMINETRUSTDTVM", data_arquivo=None)
+            with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(conteudo + "\n" if not conteudo.endswith("\n") else conteudo)
+            log_list.append(f"✅ Arquivo gerado: {out_path.name}")
+        else:
+            raise RuntimeError("Módulo CCI sem APIs esperadas")
+        
+        qtd_cci = _count_registros_em_arquivo(out_path, "cci")
+        log_list.append(f"📊 Registros gerados: {qtd_cci}")
+        return qtd_cci
+    except Exception as e:
+        log_list.append(f"❌ ERRO: {str(e)}")
+        log_list.append(traceback.format_exc())
+        return 0
+
+def run_conversor_v2c(log_list: list, selected_path: Path, out_dir: str | None):
+    """Executa Conversor V2C (Venda → Compra)."""
+    try:
+        log_list.append("[V2C] Iniciando Conversor V2C (GOORO)...")
+        conv_mod = _import_local_module("conversor_v2")
+        
+        out_folder = _choose_out_dir_or_sibling(selected_path, out_dir)
+        default_name = (
+            (selected_path.name[:-10] + "_compra.txt") if selected_path.name.endswith("_venda.txt")
+            else (selected_path.stem + "_compra.txt")
+        )
+        out_path = out_folder / default_name
+        
+        if hasattr(conv_mod, "executar_gooro_from_path"):
+            conv_mod.executar_gooro_from_path(
+                caminho_venda=str(selected_path),
+                arquivo_saida=str(out_path),
+            )
+            log_list.append(f"✅ Arquivo gerado: {out_path.name}")
+        elif hasattr(conv_mod, "executar_gooro"):
+            conv_mod.executar_gooro(arquivo_saida=str(out_path))
+            log_list.append(f"✅ Arquivo gerado: {out_path.name}")
+        else:
+            raise RuntimeError("Módulo conversor_v2 sem APIs conhecidas")
+        
+        log_list.append("✅ [V2C] Conversão concluída")
+    except Exception as e:
+        log_list.append(f"❌ ERRO: {str(e)}")
+        log_list.append(traceback.format_exc())
 
 # Configuração do repositório GitHub
 try:
@@ -804,50 +1124,74 @@ elif aba_selecionada == "🏦 CETIP":
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Upload para NC
-        arquivo_nc = st.file_uploader(
-            "Entrada — Emissão NC (planilha, 2ª aba):",
-            type=['xlsx', 'xls', 'xlsm', 'csv'],
-            key="cetip_arquivo_nc",
-            disabled=not executar_nc,
-            help="Planilha Excel para Emissão de NC (usa a 2ª aba)"
+        # Determinar qual tipo de arquivo aceitar baseado nos processos selecionados
+        processos_ativos = []
+        aceita_excel = False
+        aceita_txt = False
+        
+        if executar_nc:
+            processos_ativos.append("Emissão NC (2ª aba)")
+            aceita_excel = True
+        if executar_dep:
+            processos_ativos.append("Emissão Depósito (2ª aba)")
+            aceita_excel = True
+        if executar_cv:
+            processos_ativos.append("Operação de Venda (2ª aba)")
+            aceita_excel = True
+        if executar_cci:
+            processos_ativos.append("Emissão CCI (aba principal)")
+            aceita_excel = True
+        if executar_v2c:
+            processos_ativos.append("Conversor V2C")
+            aceita_txt = True
+        
+        # Tipos de arquivo aceitos
+        tipos_aceitos = []
+        if aceita_excel:
+            tipos_aceitos.extend(['xlsx', 'xls', 'xlsm', 'csv'])
+        if aceita_txt:
+            tipos_aceitos.append('txt')
+        
+        # Label dinâmico
+        if processos_ativos:
+            label_processos = " | ".join(processos_ativos)
+            help_text = f"Arquivo para: {label_processos}"
+        else:
+            label_processos = "Nenhum processo selecionado"
+            help_text = "Selecione pelo menos um processo na coluna ao lado"
+        
+        # Upload único que se adapta aos processos selecionados
+        arquivo_cetip = st.file_uploader(
+            f"📂 Arquivo para processos selecionados:",
+            type=tipos_aceitos if tipos_aceitos else None,
+            key="cetip_arquivo_unico",
+            disabled=not processos_ativos,
+            help=help_text
         )
         
-        # Upload para Depósito
-        arquivo_dep = st.file_uploader(
-            "Entrada — Emissão Depósito (planilha, 2ª aba):",
-            type=['xlsx', 'xls', 'xlsm', 'csv'],
-            key="cetip_arquivo_dep",
-            disabled=not executar_dep,
-            help="Planilha Excel para Emissão Depósito (usa a 2ª aba)"
-        )
+        # Informação sobre processos ativos
+        if processos_ativos:
+            st.caption(f"✅ Processos selecionados: {len(processos_ativos)}")
+            with st.expander("📋 Detalhes dos processos", expanded=False):
+                for processo in processos_ativos:
+                    st.markdown(f"- {processo}")
+        else:
+            st.warning("⚠️ Selecione pelo menos um processo")
         
-        # Upload para Compra/Venda
-        arquivo_cv = st.file_uploader(
-            "Entrada — Operação de Venda (planilha, 2ª aba):",
-            type=['xlsx', 'xls', 'xlsm', 'csv'],
-            key="cetip_arquivo_cv",
-            disabled=not executar_cv,
-            help="Planilha Excel para Operação de Venda (usa a 2ª aba)"
-        )
-        
-        # Upload para CCI
-        arquivo_cci = st.file_uploader(
-            "Entrada — Emissão CCI (planilha, aba principal):",
-            type=['xlsx', 'xls', 'xlsm', 'csv'],
-            key="cetip_arquivo_cci",
-            disabled=not executar_cci,
-            help="Planilha Excel para Emissão CCI (usa a aba principal/índice 0)"
-        )
-        
-        # Upload para V2C
-        arquivo_v2c = st.file_uploader(
-            "Entrada — V2C (arquivo venda .txt):",
-            type=['txt'],
-            key="cetip_arquivo_v2c",
-            disabled=not executar_v2c,
-            help="Arquivo de venda em formato .txt para conversão V2C (GOORO)"
-        )
+        # Preview do arquivo
+        if arquivo_cetip:
+            with st.expander("👁️ Preview do arquivo", expanded=False):
+                try:
+                    if arquivo_cetip.name.endswith('.txt'):
+                        content = arquivo_cetip.getvalue().decode('utf-8')
+                        st.text_area("Conteúdo", content[:1000], height=200, disabled=True)
+                        st.caption(f"📄 {len(content)} caracteres | Arquivo: {arquivo_cetip.name}")
+                    else:
+                        df_preview = pd.read_excel(arquivo_cetip) if arquivo_cetip.name.endswith(('.xlsx', '.xls', '.xlsm')) else pd.read_csv(arquivo_cetip)
+                        st.dataframe(df_preview.head(10), use_container_width=True)
+                        st.caption(f"📊 {len(df_preview)} linhas × {len(df_preview.columns)} colunas | Arquivo: {arquivo_cetip.name}")
+                except Exception as e:
+                    st.error(f"Erro ao visualizar arquivo: {str(e)}")
     
     st.markdown("---")
     
@@ -926,20 +1270,10 @@ elif aba_selecionada == "🏦 CETIP":
         # Verificar se pelo menos um processo está marcado
         algum_processo = executar_nc or executar_dep or executar_cv or executar_cci or executar_v2c
         
-        # Verificar se arquivos necessários foram fornecidos
-        arquivos_ok = True
-        if executar_nc and not arquivo_nc:
-            arquivos_ok = False
-        if executar_dep and not arquivo_dep:
-            arquivos_ok = False
-        if executar_cv and not arquivo_cv:
-            arquivos_ok = False
-        if executar_cci and not arquivo_cci:
-            arquivos_ok = False
-        if executar_v2c and not arquivo_v2c:
-            arquivos_ok = False
+        # Verificar se arquivo foi fornecido
+        arquivo_fornecido = arquivo_cetip is not None
         
-        executar_disabled = not algum_processo or not arquivos_ok
+        executar_disabled = not algum_processo or not arquivo_fornecido
         
         if st.button(
             "🚀 Executar",
@@ -972,142 +1306,115 @@ elif aba_selecionada == "🏦 CETIP":
                         processos_selecionados.append("Conversor V2C")
                     
                     log_cetip.append(f"📋 Processos selecionados: {', '.join(processos_selecionados)}")
+                    log_cetip.append(f"📂 Arquivo fornecido: {arquivo_cetip.name}")
+                    log_cetip.append("")
+                    
+                    # Salvar arquivo temporário (usado por todos os processos)
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(arquivo_cetip.name)[1]) as tmp:
+                        tmp.write(arquivo_cetip.getvalue())
+                        tmp_path = tmp.name
+                    
+                    log_cetip.append(f"📂 Arquivo temporário: {tmp_path}")
                     log_cetip.append("")
                     
                     # Processar NC
-                    if executar_nc and arquivo_nc:
+                    if executar_nc:
                         log_cetip.append("─" * 60)
-                        log_cetip.append("📄 [NC] Iniciando Emissão de NC...")
+                        log_cetip.append("� [NC] Iniciando Emissão de NC...")
                         log_cetip.append("─" * 60)
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(arquivo_nc.name)[1]) as tmp:
-                            tmp.write(arquivo_nc.getvalue())
-                            tmp_path_nc = tmp.name
-                        
-                        log_cetip.append(f"📂 Arquivo de entrada: {arquivo_nc.name}")
-                        log_cetip.append(f"📂 Arquivo temporário: {tmp_path_nc}")
                         log_cetip.append("⚙️ Configuração: Sheet index = 1 (2ª aba)")
                         log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
+                        log_cetip.append(f"   Saída: NC_{os.path.splitext(arquivo_cetip.name)[0]}.txt")
                         log_cetip.append("")
                         log_cetip.append("⚠️ Integração com módulo EmissaoNC_v2.py em desenvolvimento")
                         log_cetip.append("✅ [NC] Simulação concluída")
                         
                         contadores["NC"] = 1  # Simulado
-                        
-                        os.unlink(tmp_path_nc)
                         log_cetip.append("")
                     
                     # Processar Depósito
-                    if executar_dep and arquivo_dep:
+                    if executar_dep:
                         log_cetip.append("─" * 60)
                         log_cetip.append("💰 [DEP] Iniciando Emissão Depósito...")
                         log_cetip.append("─" * 60)
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(arquivo_dep.name)[1]) as tmp:
-                            tmp.write(arquivo_dep.getvalue())
-                            tmp_path_dep = tmp.name
-                        
-                        log_cetip.append(f"📂 Arquivo de entrada: {arquivo_dep.name}")
                         log_cetip.append(f"👤 Papel do participante: {papel_deposito}")
+                        log_cetip.append("⚙️ Configuração: Sheet index = 1 (2ª aba)")
                         log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
                         log_cetip.append("")
                         
                         if papel_deposito == "ambos":
                             log_cetip.append("⚙️ Gerando arquivo para EMISSOR (02)...")
-                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_dep.name)[0]}_EMISSOR.txt")
+                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_cetip.name)[0]}_EMISSOR.txt")
                             log_cetip.append("⚙️ Gerando arquivo para DISTRIBUIDOR (03)...")
-                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_dep.name)[0]}_DISTRIBUIDOR.txt")
+                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_cetip.name)[0]}_DISTRIBUIDOR.txt")
                             contadores["Depósito"] = 2  # Simulado
                         else:
                             papel_nome = "EMISSOR" if papel_deposito == "02" else "DISTRIBUIDOR"
                             log_cetip.append(f"⚙️ Gerando arquivo para {papel_nome} ({papel_deposito})...")
-                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_dep.name)[0]}_{papel_nome}.txt")
+                            log_cetip.append(f"   Saída: DEP_{os.path.splitext(arquivo_cetip.name)[0]}_{papel_nome}.txt")
                             contadores["Depósito"] = 1  # Simulado
                         
                         log_cetip.append("")
                         log_cetip.append("⚠️ Integração com módulo emissao_deposito.py em desenvolvimento")
                         log_cetip.append("✅ [DEP] Simulação concluída")
-                        
-                        os.unlink(tmp_path_dep)
                         log_cetip.append("")
                     
                     # Processar Compra/Venda
-                    if executar_cv and arquivo_cv:
+                    if executar_cv:
                         log_cetip.append("─" * 60)
                         log_cetip.append("📊 [CV] Iniciando Operação de Venda...")
                         log_cetip.append("─" * 60)
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(arquivo_cv.name)[1]) as tmp:
-                            tmp.write(arquivo_cv.getvalue())
-                            tmp_path_cv = tmp.name
-                        
-                        log_cetip.append(f"📂 Arquivo de entrada: {arquivo_cv.name}")
                         log_cetip.append("⚙️ Configuração: Sheet index = 1 (2ª aba)")
                         log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
-                        log_cetip.append(f"   Saída: Venda_{os.path.splitext(arquivo_cv.name)[0]}.txt")
+                        log_cetip.append(f"   Saída: Venda_{os.path.splitext(arquivo_cetip.name)[0]}.txt")
                         log_cetip.append("")
                         log_cetip.append("⚠️ Integração com módulo operacao_compra_venda.py em desenvolvimento")
                         log_cetip.append("✅ [CV] Simulação concluída")
                         
                         contadores["Venda"] = 1  # Simulado
-                        
-                        os.unlink(tmp_path_cv)
                         log_cetip.append("")
                     
                     # Processar CCI
-                    if executar_cci and arquivo_cci:
+                    if executar_cci:
                         log_cetip.append("─" * 60)
                         log_cetip.append("📝 [CCI] Iniciando Emissão CCI...")
                         log_cetip.append("─" * 60)
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(arquivo_cci.name)[1]) as tmp:
-                            tmp.write(arquivo_cci.getvalue())
-                            tmp_path_cci = tmp.name
-                        
-                        log_cetip.append(f"📂 Arquivo de entrada: {arquivo_cci.name}")
                         log_cetip.append(f"⚙️ Operação: {operacao_cci}")
                         log_cetip.append(f"⚙️ Modalidade: {modalidade_cci}")
                         log_cetip.append("⚙️ Configuração: Sheet index = 0 (aba principal)")
                         log_cetip.append("⚙️ Participante: LIMINETRUSTDTVM")
                         log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
-                        log_cetip.append(f"   Saída: CCI_{os.path.splitext(arquivo_cci.name)[0]}.txt")
+                        log_cetip.append(f"   Saída: CCI_{os.path.splitext(arquivo_cetip.name)[0]}.txt")
                         log_cetip.append("")
                         log_cetip.append("⚠️ Integração com módulo CCI.py em desenvolvimento")
                         log_cetip.append("✅ [CCI] Simulação concluída")
                         
                         contadores["CCI"] = 1  # Simulado
-                        
-                        os.unlink(tmp_path_cci)
                         log_cetip.append("")
                     
                     # Processar V2C
-                    if executar_v2c and arquivo_v2c:
+                    if executar_v2c:
                         log_cetip.append("─" * 60)
                         log_cetip.append("🔄 [V2C] Iniciando Conversor V2C (GOORO)...")
                         log_cetip.append("─" * 60)
-                        
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.txt') as tmp:
-                            tmp.write(arquivo_v2c.getvalue())
-                            tmp_path_v2c = tmp.name
-                        
-                        log_cetip.append(f"📂 Arquivo de entrada: {arquivo_v2c.name}")
                         log_cetip.append("⚙️ Conversão: Venda → Compra")
                         log_cetip.append(f"📁 Pasta de saída: {pasta_saida_cetip if pasta_saida_cetip else 'ao lado da entrada'}")
                         
                         # Nome do arquivo de saída
-                        if arquivo_v2c.name.endswith("_venda.txt"):
-                            nome_saida = arquivo_v2c.name[:-10] + "_compra.txt"
+                        if arquivo_cetip.name.endswith("_venda.txt"):
+                            nome_saida = arquivo_cetip.name[:-10] + "_compra.txt"
                         else:
-                            nome_saida = os.path.splitext(arquivo_v2c.name)[0] + "_compra.txt"
+                            nome_saida = os.path.splitext(arquivo_cetip.name)[0] + "_compra.txt"
                         
                         log_cetip.append(f"   Saída: {nome_saida}")
                         log_cetip.append("")
                         log_cetip.append("⚠️ Integração com módulo conversor_v2.py em desenvolvimento")
                         log_cetip.append("✅ [V2C] Simulação concluída")
                         log_cetip.append("ℹ️ Conversor V2C não participa da contagem de emissões")
-                        
-                        os.unlink(tmp_path_v2c)
                         log_cetip.append("")
+                    
+                    # Limpar arquivo temporário
+                    os.unlink(tmp_path)
                     
                     # Resumo final
                     total_emissoes = contadores["NC"] + contadores["Depósito"] + contadores["Venda"] + contadores["CCI"]
@@ -1137,8 +1444,8 @@ elif aba_selecionada == "🏦 CETIP":
     # Exibir mensagens de validação
     if not algum_processo:
         st.warning("⚠️ Selecione pelo menos um processo para executar")
-    elif not arquivos_ok:
-        st.warning("⚠️ Forneça os arquivos de entrada para os processos selecionados")
+    elif not arquivo_fornecido:
+        st.warning("⚠️ Forneça o arquivo de entrada para processar")
     
     # Relatório/Log
     st.markdown("---")
