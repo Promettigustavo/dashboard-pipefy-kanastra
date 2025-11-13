@@ -470,6 +470,12 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
         def obter_token(self):
             """Obtém token de autenticação da API Santander"""
             import requests
+            from datetime import datetime, timedelta
+            
+            # Verificar se já tem token válido
+            if hasattr(self, '_token') and hasattr(self, '_token_expiry'):
+                if datetime.now() < self._token_expiry:
+                    return self._token
             
             token_url = self.base_urls[self.ambiente]["token"]
             
@@ -488,9 +494,20 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             
             if response.status_code == 200:
                 token_data = response.json()
-                return token_data.get('access_token')
+                self._token = token_data.get('access_token')
+                # Token válido por 1 hora (padrão OAuth2)
+                expires_in = token_data.get('expires_in', 3600)
+                self._token_expiry = datetime.now() + timedelta(seconds=expires_in - 60)
+                return self._token
             else:
                 raise Exception(f"Erro ao obter token: {response.status_code} - {response.text}")
+        
+        def _is_token_valid(self):
+            """Verifica se o token atual ainda é válido"""
+            from datetime import datetime
+            if not hasattr(self, '_token') or not hasattr(self, '_token_expiry'):
+                return False
+            return datetime.now() < self._token_expiry
     
     return SantanderAuthFromSecrets()
 
