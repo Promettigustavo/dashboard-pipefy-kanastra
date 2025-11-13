@@ -642,6 +642,7 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             
             if response.status_code == 200:
                 token_data = response.json()
+                self.token_data = token_data  # ← ADICIONADO: Salva o token_data completo
                 self._token = token_data.get('access_token')
                 # Token válido por 1 hora (padrão OAuth2)
                 expires_in = token_data.get('expires_in', 3600)
