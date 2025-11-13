@@ -485,22 +485,25 @@ with tab_liquidacao:
             ):
                 with st.spinner("Movendo cards para análise..."):
                     try:
-                        module, error = get_module('movecards')
-                        if module:
-                            st.info("🔄 Executando movimentação para análise...")
-                            resultado = module.main()
-                            
-                            if resultado is not None:
-                                st.success("✅ Cards movidos para análise com sucesso!")
-                                if isinstance(resultado, dict):
-                                    for key, value in resultado.items():
-                                        st.metric(key, value)
-                                else:
-                                    st.metric("Cards movidos", resultado)
+                        # Importar sem cache para pegar versão atualizada
+                        import importlib
+                        import sys
+                        if 'movecards' in sys.modules:
+                            del sys.modules['movecards']
+                        import movecards
+                        
+                        st.info("🔄 Executando movimentação para análise...")
+                        resultado = movecards.main()
+                        
+                        if resultado is not None:
+                            st.success("✅ Cards movidos para análise com sucesso!")
+                            if isinstance(resultado, dict):
+                                for key, value in resultado.items():
+                                    st.metric(key, value)
                             else:
-                                st.warning("⚠️ Nenhum card foi movido")
+                                st.metric("Cards movidos", resultado)
                         else:
-                            st.error(f"❌ Módulo movecards não disponível: {error}")
+                            st.warning("⚠️ Nenhum card foi movido")
                     except Exception as e:
                         st.error(f"❌ Erro ao mover cards: {str(e)}")
                         st.code(traceback.format_exc())
@@ -515,22 +518,25 @@ with tab_liquidacao:
             ):
                 with st.spinner("Movendo cards para 2ª aprovação..."):
                     try:
-                        module, error = get_module('mover_2a_aprovacao')
-                        if module:
-                            st.info("🔄 Executando movimentação para 2ª aprovação...")
-                            resultado = module.main()
-                            
-                            if resultado is not None:
-                                st.success("✅ Cards movidos para 2ª aprovação com sucesso!")
-                                if isinstance(resultado, dict):
-                                    for key, value in resultado.items():
-                                        st.metric(key, value)
-                                else:
-                                    st.metric("Cards movidos", resultado)
+                        # Importar sem cache para pegar versão atualizada
+                        import importlib
+                        import sys
+                        if 'mover_2a_aprovacao' in sys.modules:
+                            del sys.modules['mover_2a_aprovacao']
+                        import mover_2a_aprovacao
+                        
+                        st.info("🔄 Executando movimentação para 2ª aprovação...")
+                        resultado = mover_2a_aprovacao.main()
+                        
+                        if resultado is not None:
+                            st.success("✅ Cards movidos para 2ª aprovação com sucesso!")
+                            if isinstance(resultado, dict):
+                                for key, value in resultado.items():
+                                    st.metric(key, value)
                             else:
-                                st.warning("⚠️ Nenhum card foi movido")
+                                st.metric("Cards movidos", resultado)
                         else:
-                            st.error(f"❌ Módulo mover_2a_aprovacao não disponível: {error}")
+                            st.warning("⚠️ Nenhum card foi movido")
                     except Exception as e:
                         st.error(f"❌ Erro ao mover cards: {str(e)}")
                         st.code(traceback.format_exc())
