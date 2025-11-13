@@ -370,6 +370,10 @@ def get_santander_credentials():
                 
                 fundo_secrets = st.secrets["santander_fundos"][fundo_id]
                 
+                # Validar se é um dicionário (fundo) e não uma string (certificado)
+                if not isinstance(fundo_secrets, dict):
+                    continue
+                
                 # Montar dict no formato do credenciais_bancos.py
                 fundos_dict[fundo_id] = {
                     "nome": fundo_secrets.get("nome", ""),
