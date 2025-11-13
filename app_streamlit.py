@@ -395,20 +395,19 @@ def get_santander_credentials():
 
 def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     """
-    Cria objeto de autenticação Santander a partir do st.secrets
-    Retorna um objeto com as mesmas propriedades que SantanderAuth
+    Cria objeto de autenticação Santander usando certificados do repositório
+    SEMPRE usa os certificados .pem e .key da pasta certificados/
     
     Args:
         fundo_id: ID do fundo (ex: "AUTO_XI")
         ambiente: "producao" ou "homologacao"
     
     Returns:
-        Objeto com propriedades: fundo_id, fundo_nome, fundo_cnpj, client_id, client_secret, 
-        cert_path, key_path, cert_base64, key_base64, ambiente, base_urls
+        Objeto com propriedades compatíveis com SantanderAuth
     """
-    import base64
-    import tempfile
     from pathlib import Path
+    
+    print(f"🔑 Criando autenticação para fundo {fundo_id}")
     
     # Obter credenciais
     fundos, source = get_santander_credentials()
@@ -418,32 +417,33 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     
     fundo = fundos[fundo_id]
     
-    # Verificar se há certificados globais compartilhados
-    cert_path_global = None
-    key_path_global = None
+    # SEMPRE usar certificados do repositório (pasta certificados/)
+    cert_path = Path(__file__).parent / "certificados" / "santander_cert.pem"
+    key_path = Path(__file__).parent / "certificados" / "santander_key.pem"
     
-    if "santander_fundos" in st.secrets:
-        # Verificar se há cert_path e key_path no nível raiz de santander_fundos
-        if "cert_path" in st.secrets["santander_fundos"]:
-            cert_path_global = st.secrets["santander_fundos"]["cert_path"]
-        if "key_path" in st.secrets["santander_fundos"]:
-            key_path_global = st.secrets["santander_fundos"]["key_path"]
+    print(f"📂 Certificado: {cert_path}")
+    print(f"📂 Chave: {key_path}")
+    print(f"✅ Cert existe: {cert_path.exists()}")
+    print(f"✅ Key existe: {key_path.exists()}")
+    
+    if not cert_path.exists():
+        raise FileNotFoundError(f"❌ Certificado não encontrado: {cert_path}")
+    if not key_path.exists():
+        raise FileNotFoundError(f"❌ Chave privada não encontrada: {key_path}")
     
     # Criar objeto de autenticação
     class SantanderAuthFromSecrets:
         def __init__(self):
-            print(f"DEBUG SantanderAuthFromSecrets: Inicializando para fundo {fundo_id}")
-            print(f"DEBUG: cert_path_global = {cert_path_global}")
-            print(f"DEBUG: key_path_global = {key_path_global}")
-            print(f"DEBUG: 'cert_path' in fundo = {'cert_path' in fundo}")
-            print(f"DEBUG: 'cert_base64' in fundo = {'cert_base64' in fundo}")
-            
             self.fundo_id = fundo_id
             self.fundo_nome = fundo.get("nome", "")
             self.fundo_cnpj = fundo.get("cnpj", "")
             self.client_id = fundo.get("client_id", "")
             self.client_secret = fundo.get("client_secret", "")
             self.ambiente = ambiente
+            
+            # Certificados do repositório
+            self.cert_path = str(cert_path)
+            self.key_path = str(key_path)
             
             # URLs base da API
             self.base_urls = {
@@ -457,89 +457,8 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 }
             }
             
-            # Certificados - múltiplas opções de configuração (ORDEM IMPORTA!)
-            
-            # Opção 1 (PRIORIDADE): Certificados compartilhados globais no repositório
-            if cert_path_global and key_path_global:
-                print(f"DEBUG: Usando OPÇÃO 1 - Certificados globais do repositório")
-                self.cert_path = cert_path_global
-                self.key_path = key_path_global
-                
-                # Se for path relativo, resolver a partir do diretório do projeto
-                if not Path(self.cert_path).is_absolute():
-                    self.cert_path = str(Path(__file__).parent / self.cert_path)
-                if not Path(self.key_path).is_absolute():
-                    self.key_path = str(Path(__file__).parent / self.key_path)
-                
-                print(f"DEBUG: cert_path resolvido = {self.cert_path}")
-                print(f"DEBUG: key_path resolvido = {self.key_path}")
-                print(f"DEBUG: cert_path existe = {Path(self.cert_path).exists()}")
-                print(f"DEBUG: key_path existe = {Path(self.key_path).exists()}")
-                
-                # Validar que os arquivos existem
-                if not Path(self.cert_path).exists():
-                    raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
-                if not Path(self.key_path).exists():
-                    raise FileNotFoundError(f"Chave privada não encontrada: {self.key_path}")
-                    
-            # Opção 2: cert_path e key_path específicos do fundo (modo local)
-            elif "cert_path" in fundo and "key_path" in fundo:
-                print(f"DEBUG: Usando OPÇÃO 2 - Certificados específicos do fundo")
-                self.cert_path = fundo["cert_path"]
-                self.key_path = fundo["key_path"]
-                
-                # Validar que os arquivos existem
-                if not Path(self.cert_path).exists():
-                    raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
-                if not Path(self.key_path).exists():
-                    raise FileNotFoundError(f"Chave privada não encontrada: {self.key_path}")
-                    
-            # Opção 3: Conteúdo PEM em base64 no secrets (fallback)
-            elif "cert_base64" in fundo and "key_base64" in fundo:
-                print(f"DEBUG: Usando OPÇÃO 3 - Certificados em base64 (criando arquivos temporários)")
-                cert_pem = fundo["cert_base64"]
-                key_pem = fundo["key_base64"]
-                
-                print(f"DEBUG: Tamanho cert_pem = {len(cert_pem)} caracteres")
-                print(f"DEBUG: Tamanho key_pem = {len(key_pem)} caracteres")
-                print(f"DEBUG: cert_pem começa com: {cert_pem[:50]}")
-                
-                # Garantir que cada linha termine com \n (formato PEM correto)
-                if not cert_pem.endswith('\n'):
-                    cert_pem += '\n'
-                if not key_pem.endswith('\n'):
-                    key_pem += '\n'
-                
-                # Criar arquivos temporários
-                temp_dir = Path(tempfile.gettempdir()) / "santander_certs"
-                temp_dir.mkdir(exist_ok=True)
-                
-                print(f"DEBUG: Diretório temporário = {temp_dir}")
-                
-                self.cert_path = str(temp_dir / f"{fundo_id}_cert.pem")
-                self.key_path = str(temp_dir / f"{fundo_id}_key.pem")
-                
-                # Escrever certificados como texto (PEM)
-                print(f"DEBUG: Salvando certificado em {self.cert_path}")
-                print(f"DEBUG: Salvando chave em {self.key_path}")
-                
-                with open(self.cert_path, 'w', encoding='utf-8', newline='\n') as f:
-                    f.write(cert_pem)
-                
-                with open(self.key_path, 'w', encoding='utf-8', newline='\n') as f:
-                    f.write(key_pem)
-                
-                # Validar que foram criados
-                print(f"DEBUG: Certificado criado = {Path(self.cert_path).exists()}")
-                print(f"DEBUG: Chave criada = {Path(self.key_path).exists()}")
-                
-                # Validar formato PEM
-                with open(self.cert_path, 'r') as f:
-                    cert_content = f.read()
-                    print(f"DEBUG: Primeiro linha do cert salvo: {cert_content.split(chr(10))[0]}")
-                    
-            else:
-                raise ValueError(f"Certificados não encontrados para fundo {fundo_id}. Configure cert_path/key_path ou cert_base64/key_base64")
+            # Token data (será preenchido pelo obter_token)
+            self.token_data = None
         
         def obter_token(self):
             """Obtém token de autenticação da API Santander"""
