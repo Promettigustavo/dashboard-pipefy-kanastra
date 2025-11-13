@@ -378,9 +378,10 @@ def get_santander_credentials():
                 
                 fundo_secrets = st.secrets["santander_fundos"][fundo_id]
                 
-                # Validar se é um dicionário (fundo) e não uma string (certificado)
-                if not isinstance(fundo_secrets, dict):
-                    skipped_keys.append(f"{fundo_id} (não é dict: {type(fundo_secrets).__name__})")
+                # Validar se é um dicionário-like (aceita dict e AttrDict do Streamlit)
+                # Streamlit usa AttrDict nos secrets, então verificamos se tem os métodos de dict
+                if not (hasattr(fundo_secrets, 'get') and hasattr(fundo_secrets, 'keys')):
+                    skipped_keys.append(f"{fundo_id} (não é dict-like: {type(fundo_secrets).__name__})")
                     continue
                 
                 # Montar dict no formato do credenciais_bancos.py
