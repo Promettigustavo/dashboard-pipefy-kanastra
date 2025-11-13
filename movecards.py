@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 
 def filtrar_cards_triagem():
     """
@@ -7,8 +8,13 @@ def filtrar_cards_triagem():
     Filtra: NÃO move cards com "Recolhimento de IOF" ou "Recolhimento de IRRF"
     """
     
-    # Token funcionando
-    api_token = "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJQaXBlZnkiLCJpYXQiOjE3NjExMzkxNDcsImp0aSI6ImM1NzhhYzM5LTUwZmUtNGI0NC1iMzYzLWE5ZjNhMzBmNjUwYyIsInN1YiI6MzA2ODY4NTY3LCJ1c2VyIjp7ImlkIjozMDY4Njg1NjcsImVtYWlsIjoiZ3VzdGF2by5wcm9tZXR0aUBrYW5hc3RyYS5jb20uYnIifSwidXNlcl90eXBlIjoiYXV0aGVudGljYXRlZCJ9.hjcPATGMMX1xBcRMHQ7gfjkvqB7Nq9w0Ou9tD33fIlmLoicU928x5sd_T_nmkL04DV37GtxFtF5mCFaFSa4fVQ"
+    # Tentar pegar token do Streamlit secrets, senão usar hardcoded
+    try:
+        import streamlit as st
+        api_token = st.secrets["pipefy"]["api_token"]
+    except:
+        # Fallback para execução local
+        api_token = "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJQaXBlZnkiLCJpYXQiOjE3NjExMzkxNDcsImp0aSI6ImM1NzhhYzM5LTUwZmUtNGI0NC1iMzYzLWE5ZjNhMzBmNjUwYyIsInN1YiI6MzA2ODY4NTY3LCJ1c2VyIjp7ImlkIjozMDY4Njg1NjcsImVtYWlsIjoiZ3VzdGF2by5wcm9tZXR0aUBrYW5hc3RyYS5jb20uYnIifSwidXNlcl90eXBlIjoiYXV0aGVudGljYXRlZCJ9.hjcPATGMMX1xBcRMHQ7gfjkvqB7Nq9w0Ou9tD33fIlmLoicU928x5sd_T_nmkL04DV37GtxFtF5mCFaFSa4fVQ"
     
     headers = {
         "Authorization": f"Bearer {api_token}",
@@ -307,6 +313,12 @@ def filtrar_cards_triagem():
         
     except Exception as e:
         print(f"❌ Erro inesperado: {e}")
+        return None
+
+
+def main():
+    """Função principal para compatibilidade com app_streamlit.py"""
+    return filtrar_cards_triagem()
 
 
 if __name__ == "__main__":
