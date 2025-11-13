@@ -887,7 +887,17 @@ if aba_selecionada == "💰 Liquidação":
                         st.success("✅ Cards movidos para análise com sucesso!")
                         if isinstance(resultado, dict):
                             for key, value in resultado.items():
-                                st.metric(key, value)
+                                # Exibir apenas valores numéricos no st.metric
+                                if isinstance(value, (int, float)):
+                                    st.metric(key, value)
+                                elif isinstance(value, list):
+                                    st.write(f"**{key}**: {len(value)} card(s)")
+                                    if value:
+                                        with st.expander(f"Ver detalhes de {key}"):
+                                            for card in value:
+                                                st.json(card)
+                                else:
+                                    st.write(f"**{key}**: {value}")
                         else:
                             st.metric("Cards movidos", resultado)
                     else:
