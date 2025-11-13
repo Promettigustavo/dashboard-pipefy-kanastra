@@ -2058,8 +2058,13 @@ elif aba_selecionada == "📎 Comprovantes":
                                     )
                                     st.write(f"✅ Listagem concluída")
                                     
+                                    # Debug: Mostrar estrutura da resposta
+                                    st.write(f"🔍 DEBUG: Tipo de resposta: {type(comprovantes)}")
+                                    st.write(f"🔍 DEBUG: Conteúdo: {comprovantes}")
+                                    
                                     if comprovantes:
                                         qtd = len(comprovantes.get('receipts', []))
+                                        st.write(f"📊 Total de comprovantes: {qtd}")
                                         comprovantes_encontrados += qtd
                                         
                                         # Baixar cada comprovante
