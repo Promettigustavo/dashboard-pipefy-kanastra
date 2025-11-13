@@ -366,7 +366,7 @@ st.markdown("""
     .main-header {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #00B37E;
+        color: #00875F;
         margin-bottom: 0.5rem;
     }
     .sub-header {
@@ -377,7 +377,7 @@ st.markdown("""
     }
     .stButton>button {
         width: 100%;
-        background-color: #00B37E;
+        background-color: #00875F;
         color: white;
         font-weight: 600;
         border-radius: 0.5rem;
@@ -386,9 +386,9 @@ st.markdown("""
         transition: all 0.3s;
     }
     .stButton>button:hover {
-        background-color: #00875F;
+        background-color: #006644;
         transform: translateY(-2px);
-        box-shadow: 0 4px 6px rgba(0,179,126,0.2);
+        box-shadow: 0 4px 6px rgba(0,135,95,0.2);
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
@@ -400,7 +400,7 @@ st.markdown("""
         font-weight: 500;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #00B37E;
+        background-color: #00875F;
         color: white;
     }
 </style>
@@ -554,7 +554,7 @@ with st.sidebar:
 if aba_selecionada == "💰 Liquidação":
     # Header com estilo
     st.markdown("""
-        <div style='background: linear-gradient(90deg, #00B37E 0%, #00875F 100%); 
+        <div style='background: linear-gradient(90deg, #00875F 0%, #006644 100%); 
                     padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;'>
             <h1 style='color: white; margin: 0; font-size: 2rem;'>
                 💰 Processamento de Liquidação
@@ -573,7 +573,7 @@ if aba_selecionada == "💰 Liquidação":
     
     # ===== BOTÕES DE MOVER CARDS (TOPO) =====
     st.markdown("""
-        <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #00B37E;'>
+        <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border-left: 4px solid #00875F;'>
             <h3 style='margin: 0; color: #1a1a1a;'>🔄 Movimentação de Cards</h3>
             <p style='margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;'>
                 Mova cards entre fases do pipeline
@@ -1083,7 +1083,7 @@ if aba_selecionada == "💰 Liquidação":
 elif aba_selecionada == "🏦 CETIP":
     # Header com estilo
     st.markdown("""
-        <div style='background: linear-gradient(90deg, #0066CC 0%, #0052A3 100%); 
+        <div style='background: linear-gradient(90deg, #00875F 0%, #006644 100%); 
                     padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;'>
             <h1 style='color: white; margin: 0; font-size: 2rem;'>
                 🏦 CETIP - Integração
@@ -1101,8 +1101,8 @@ elif aba_selecionada == "🏦 CETIP":
     
     with col_processos:
         st.markdown("""
-            <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #0066CC;'>
-                <h4 style='margin: 0 0 0.75rem 0; color: #0066CC;'>📋 Processos</h4>
+            <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #00875F;'>
+                <h4 style='margin: 0 0 0.75rem 0; color: #00875F;'>📋 Processos</h4>
             </div>
         """, unsafe_allow_html=True)
         
@@ -1117,8 +1117,8 @@ elif aba_selecionada == "🏦 CETIP":
     
     with col_entradas:
         st.markdown("""
-            <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #0066CC;'>
-                <h4 style='margin: 0 0 0.75rem 0; color: #0066CC;'>📁 Arquivos de Entrada</h4>
+            <div style='background-color: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #00875F;'>
+                <h4 style='margin: 0 0 0.75rem 0; color: #00875F;'>📁 Arquivos de Entrada</h4>
             </div>
         """, unsafe_allow_html=True)
         
@@ -1494,7 +1494,7 @@ elif aba_selecionada == "🏦 CETIP":
 elif aba_selecionada == "📎 Comprovantes":
     # Header com estilo
     st.markdown("""
-        <div style='background: linear-gradient(90deg, #DC2626 0%, #B91C1C 100%); 
+        <div style='background: linear-gradient(90deg, #00875F 0%, #006644 100%); 
                     padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem;'>
             <h1 style='color: white; margin: 0; font-size: 2rem;'>
                 📎 Anexar Comprovantes Santander
