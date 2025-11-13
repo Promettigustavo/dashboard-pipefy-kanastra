@@ -507,6 +507,12 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 st.error(f"❌ Erro ao ler certificados: {str(e)}")
                 raise ValueError(f"Erro ao ler certificados: {str(e)}")
             
+            # Headers conforme código original (credenciais_bancos.py)
+            headers = {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-Application-Key": self.client_id
+            }
+            
             data = {
                 'grant_type': 'client_credentials',
                 'client_id': self.client_id,
@@ -515,12 +521,14 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             
             st.write(f"🚀 Fazendo requisição POST para obter token...")
             st.write(f"  URL: {token_url}")
+            st.write(f"  Headers: Content-Type + X-Application-Key")
             st.write(f"  Cert: {self.cert_path}")
             st.write(f"  Key: {self.key_path}")
             
             try:
                 response = requests.post(
                     token_url,
+                    headers=headers,  # ← ADICIONADO!
                     data=data,
                     cert=(self.cert_path, self.key_path),
                     verify=True,
