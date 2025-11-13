@@ -1854,11 +1854,12 @@ elif aba_selecionada == "📎 Comprovantes":
             disabled=not any([pipe_liquidacao, pipe_taxas])
         ):
             st.markdown("---")
-            st.markdown("### 📊 Execução em Andamento")
+            st.markdown("### 📊 Anexando Comprovantes ao Pipefy")
             
             # Container para logs em tempo real
             log_placeholder = st.empty()
             progress_bar = st.progress(0)
+            status_container = st.container()
             
             # Armazenar resultados consolidados
             resultados_consolidados = []
@@ -1870,18 +1871,31 @@ elif aba_selecionada == "📎 Comprovantes":
                 pipes_total = sum([pipe_liquidacao, pipe_taxas])
                 pipe_atual = 0
                 
+                st.info(f"📅 Processando cards com data de referência: **{data_busca_str}**")
+                
                 # Processar Pipe Liquidação
                 if pipe_liquidacao:
                     pipe_atual += 1
-                    log_placeholder.info(f"⏳ [{pipe_atual}/{pipes_total}] Processando Pipe Liquidação... (data: {data_busca_str})")
-                    progress_bar.progress(pipe_atual / (pipes_total + 1))
+                    with status_container:
+                        st.markdown(f"#### 💰 Pipe Liquidação [{pipe_atual}/{pipes_total}]")
+                    
+                    log_placeholder.info(f"⏳ Carregando módulo Anexarcomprovantespipe...")
+                    progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.3)
                     
                     module, error = get_module('Anexarcomprovantespipe')
                     if not module:
                         st.error(f"❌ Pipe Liquidação: Módulo não disponível - {error}")
+                        st.info("💡 O arquivo `Anexarcomprovantespipe.py` precisa estar no repositório")
                     else:
+                        log_placeholder.info(f"⏳ Buscando cards na fase 'Aguardando Comprovante'...")
+                        progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.5)
+                        
                         if hasattr(module, 'processar_todos_cards'):
+                            log_placeholder.info(f"⏳ Processando matching e anexando comprovantes...")
+                            progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
+                            
                             resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                            progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:
                                 for r in resultados:
@@ -1891,24 +1905,36 @@ elif aba_selecionada == "📎 Comprovantes":
                                     if r.get('sucesso'):
                                         total_sucessos += 1
                                 
-                                log_placeholder.success(f"✅ Pipe Liquidação: {len([r for r in resultados if r.get('sucesso')])} cards movidos")
+                                sucessos_liq = len([r for r in resultados if r.get('sucesso')])
+                                log_placeholder.success(f"✅ Pipe Liquidação: {sucessos_liq}/{len(resultados)} cards processados com sucesso")
                             else:
-                                log_placeholder.warning("⚠️ Pipe Liquidação: Nenhum card encontrado")
+                                log_placeholder.warning("⚠️ Pipe Liquidação: Nenhum card encontrado na fase 'Aguardando Comprovante'")
                         else:
-                            st.error("❌ Pipe Liquidação: Função processar_todos_cards não encontrada")
+                            st.error("❌ Pipe Liquidação: Função processar_todos_cards não encontrada no módulo")
                 
                 # Processar Pipe Taxas
                 if pipe_taxas:
                     pipe_atual += 1
-                    log_placeholder.info(f"⏳ [{pipe_atual}/{pipes_total}] Processando Pipe Taxas... (data: {data_busca_str})")
-                    progress_bar.progress(pipe_atual / (pipes_total + 1))
+                    with status_container:
+                        st.markdown(f"#### 📊 Pipe Taxas [{pipe_atual}/{pipes_total}]")
+                    
+                    log_placeholder.info(f"⏳ Carregando módulo Anexarcomprovantespipetaxas...")
+                    progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.3)
                     
                     module, error = get_module('Anexarcomprovantespipetaxas')
                     if not module:
                         st.error(f"❌ Pipe Taxas: Módulo não disponível - {error}")
+                        st.info("💡 O arquivo `Anexarcomprovantespipetaxas.py` precisa estar no repositório")
                     else:
+                        log_placeholder.info(f"⏳ Buscando cards na fase 'Aguardando Comprovante'...")
+                        progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.5)
+                        
                         if hasattr(module, 'processar_todos_cards'):
+                            log_placeholder.info(f"⏳ Processando matching e anexando comprovantes...")
+                            progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
+                            
                             resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                            progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:
                                 for r in resultados:
@@ -1918,11 +1944,12 @@ elif aba_selecionada == "📎 Comprovantes":
                                     if r.get('sucesso'):
                                         total_sucessos += 1
                                 
-                                log_placeholder.success(f"✅ Pipe Taxas: {len([r for r in resultados if r.get('sucesso')])} cards movidos")
+                                sucessos_tax = len([r for r in resultados if r.get('sucesso')])
+                                log_placeholder.success(f"✅ Pipe Taxas: {sucessos_tax}/{len(resultados)} cards processados com sucesso")
                             else:
-                                log_placeholder.warning("⚠️ Pipe Taxas: Nenhum card encontrado")
+                                log_placeholder.warning("⚠️ Pipe Taxas: Nenhum card encontrado na fase 'Aguardando Comprovante'")
                         else:
-                            st.error("❌ Pipe Taxas: Função processar_todos_cards não encontrada")
+                            st.error("❌ Pipe Taxas: Função processar_todos_cards não encontrada no módulo")
                 
                 # Finalizar progress
                 progress_bar.progress(1.0)
