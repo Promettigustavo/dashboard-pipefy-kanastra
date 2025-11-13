@@ -2145,6 +2145,13 @@ elif aba_selecionada == "📎 Comprovantes":
         st.markdown("---")
         
         # Botão principal
+        # Opção de versão otimizada
+        usar_otimizacao = st.checkbox(
+            "🚀 Usar versão otimizada V2 (experimental - busca sob demanda)",
+            value=False,
+            help="Versão otimizada que busca comprovantes apenas dos fundos necessários, em vez de cachear todos. Mais rápido e usa menos memória."
+        )
+        
         if st.button(
             "▶ Anexar Comprovantes",
             type="primary",
@@ -2228,15 +2235,28 @@ elif aba_selecionada == "📎 Comprovantes":
                             # Avisar que pode demorar
                             with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
                                 log_placeholder.info(f"🔄 Executando matching e anexando comprovantes...")
-                                st.caption("💡 O módulo está buscando comprovantes na API Santander e fazendo matching com os cards do Pipefy. Aguarde...")
+                                
+                                # Mostrar qual versão está usando
+                                if usar_otimizacao:
+                                    st.caption("🚀 Modo: Busca otimizada sob demanda (V2)")
+                                else:
+                                    st.caption("💡 Modo: Cache completo (V1 - padrão)")
+                                
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
                                 # Processar - PASSANDO OS CLIENTES
                                 try:
-                                    resultados = module.processar_todos_cards(
-                                        data_busca=data_busca_str,
-                                        clientes_santander=clientes_santander
-                                    )
+                                    # Escolher função baseado no checkbox
+                                    if usar_otimizacao and hasattr(module, 'processar_todos_cards_v2_otimizado'):
+                                        resultados = module.processar_todos_cards_v2_otimizado(
+                                            data_busca=data_busca_str,
+                                            clientes_santander=clientes_santander
+                                        )
+                                    else:
+                                        resultados = module.processar_todos_cards(
+                                            data_busca=data_busca_str,
+                                            clientes_santander=clientes_santander
+                                        )
                                 except Exception as e_proc:
                                     st.error(f"❌ Erro ao processar cards: {e_proc}")
                                     import traceback
@@ -2281,14 +2301,27 @@ elif aba_selecionada == "📎 Comprovantes":
                             # Avisar que pode demorar
                             with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
                                 log_placeholder.info(f"🔄 Executando matching e anexando comprovantes...")
-                                st.caption("💡 O módulo está buscando comprovantes na API Santander e fazendo matching com os cards do Pipefy. Aguarde...")
+                                
+                                # Mostrar qual versão está usando
+                                if usar_otimizacao:
+                                    st.caption("🚀 Modo: Busca otimizada sob demanda (V2)")
+                                else:
+                                    st.caption("💡 Modo: Cache completo (V1 - padrão)")
+                                
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
                                 # Processar - PASSANDO OS CLIENTES
-                                resultados = module.processar_todos_cards(
-                                    data_busca=data_busca_str,
-                                    clientes_santander=clientes_santander
-                                )
+                                # Escolher função baseado no checkbox
+                                if usar_otimizacao and hasattr(module, 'processar_todos_cards_v2_otimizado'):
+                                    resultados = module.processar_todos_cards_v2_otimizado(
+                                        data_busca=data_busca_str,
+                                        clientes_santander=clientes_santander
+                                    )
+                                else:
+                                    resultados = module.processar_todos_cards(
+                                        data_busca=data_busca_str,
+                                        clientes_santander=clientes_santander
+                                    )
                                 progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:

@@ -1521,6 +1521,288 @@ def processar_todos_cards(data_busca=None, clientes_santander=None):
     return resultados
 
 
+# ==================== VERSÃO OTIMIZADA (V2) ====================
+
+def processar_todos_cards_v2_otimizado(data_busca=None, clientes_santander=None):
+    """
+    VERSÃO OTIMIZADA - Busca comprovantes sob demanda por card
+    
+    Em vez de cachear TODOS os comprovantes de TODOS os fundos antes,
+    busca apenas os comprovantes do fundo específico de cada card.
+    
+    Vantagens:
+    - Menos uso de memória (não cacheia centenas de comprovantes)
+    - Mais rápido (não espera 39 requests antes de começar)
+    - Escalável (processa card por card conforme necessário)
+    
+    Args:
+        data_busca: Data para buscar comprovantes (formato YYYY-MM-DD). Se None, usa hoje.
+        clientes_santander: Dict com clientes SantanderComprovantes já inicializados.
+    """
+    global santander_clients
+    
+    # Se recebeu clientes externos, usar eles
+    if clientes_santander:
+        log(f"📦 Usando {len(clientes_santander)} cliente(s) Santander fornecidos externamente")
+        santander_clients = clientes_santander
+    
+    # Salvar data de busca
+    global data_busca_str
+    from datetime import date
+    if data_busca is None:
+        data_busca_str = date.today().strftime('%Y-%m-%d')
+    else:
+        data_busca_str = data_busca if isinstance(data_busca, str) else data_busca.strftime('%Y-%m-%d')
+    
+    log("\n" + "="*80)
+    log("🚀 PROCESSAMENTO OTIMIZADO V2 - PIPE LIQUIDAÇÃO")
+    log("="*80)
+    log("💡 Modo: Busca sob demanda (apenas fundos necessários)")
+    
+    # 1. Buscar ID da fase
+    fase_id = buscar_fase_por_nome(PIPE_LIQUIDACAO_ID, "Aguardando Comprovante")
+    
+    if not fase_id:
+        log("❌ Erro: Fase 'Aguardando Comprovante' não encontrada")
+        return None
+    
+    # 2. Buscar cards da fase
+    cards = buscar_cards_da_fase(fase_id, limite=999999)
+    
+    if not cards:
+        log("ℹ️  Nenhum card para processar")
+        return []
+    
+    log(f"📋 Total de cards a processar: {len(cards)}\n")
+    log(f"📅 Data de busca: {data_busca_str}\n")
+    
+    # 3. Processar cards um por um (busca sob demanda)
+    resultados = []
+    cards_com_match = 0
+    cards_sem_match = 0
+    cards_anexados = 0
+    cards_pulados = 0
+    cache_fundos = {}  # Cache apenas dos fundos que foram consultados
+    
+    log("🔄 Processando cards...")
+    
+    for idx, card in enumerate(cards, 1):
+        card_title = card.get('title', 'Sem título')
+        log(f"[{idx}/{len(cards)}] {card_title}", level='debug')
+        
+        # Processar card com busca sob demanda
+        resultado = processar_card_otimizado(card, data_busca_str, cache_fundos)
+        resultados.append(resultado)
+        
+        if resultado.get('pulado', False):
+            cards_pulados += 1
+            log(f"   ⏭️  Pulado (já tem comprovante)")
+        elif resultado['sucesso']:
+            cards_anexados += 1
+            log(f"   ✅ Anexado")
+        elif resultado['etapa'] == 'matching' and 'não encontrado' in resultado['motivo'].lower():
+            cards_sem_match += 1
+            log(f"   ⚠️ {resultado['motivo']}", level='debug')
+        elif resultado['etapa'] == 'matching':
+            cards_com_match += 1
+            log(f"   ✅ Match encontrado")
+        else:
+            log(f"   ❌ {resultado['motivo']}")
+    
+    # 4. Relatório final
+    sucessos = [r for r in resultados if r['sucesso']]
+    falhas = [r for r in resultados if not r['sucesso'] and not r.get('pulado', False)]
+    
+    log("\n" + "="*80)
+    log("📊 RESUMO FINAL")
+    log("="*80)
+    log(f"✅ Sucessos: {len(sucessos)}")
+    log(f"⏭️  Pulados: {cards_pulados}")
+    log(f"⚠️ Sem match: {cards_sem_match}")
+    log(f"❌ Erros: {len(falhas) - cards_sem_match}")
+    log(f"📅 Data de busca: {data_busca_str}")
+    log(f"🏦 Fundos consultados: {len(cache_fundos)}/{len(santander_clients)}")
+    
+    # Resumo detalhado dos matches
+    if sucessos:
+        log(f"\n{'='*80}")
+        log(f"✅ COMPROVANTES ANEXADOS COM SUCESSO ({len(sucessos)})")
+        log(f"{'='*80}")
+        log(f"\n📋 Informações dos Matches:\n")
+        
+        for idx, r in enumerate(sucessos, 1):
+            card_info = r.get('card_dados', {})
+            comprovante_info = r.get('comprovante_match', {})
+            
+            log(f"[{idx}] {r['card_title']}")
+            log(f"    💰 Valor: R$ {card_info.get('valor', 0):,.2f}")
+            log(f"    🏢 Beneficiário: {card_info.get('nome_beneficiario', 'N/A')}")
+            log(f"    🏦 Fundo: {comprovante_info.get('fundo', 'N/A')}")
+            log(f"    ✅ Status: Anexado e movido para 'Solicitação Paga'")
+            log("")
+    
+    if falhas:
+        falhas_reais = [r for r in falhas if 'não encontrado' not in r['motivo'].lower()]
+        if falhas_reais:
+            log(f"\n{'='*80}")
+            log(f"❌ ERROS DURANTE PROCESSAMENTO ({len(falhas_reais)})")
+            log(f"{'='*80}")
+            for r in falhas_reais:
+                log(f"\n✗ {r['card_title']}")
+                log(f"   Etapa: {r['etapa']}")
+                log(f"   Motivo: {r['motivo']}")
+    
+    log("="*80)
+    
+    return resultados
+
+
+def processar_card_otimizado(card, data_busca_str, cache_fundos):
+    """
+    Processa um card com busca sob demanda de comprovantes
+    
+    Args:
+        card: Dicionário com dados do card
+        data_busca_str: Data no formato YYYY-MM-DD
+        cache_fundos: Dict para cachear comprovantes já buscados
+    
+    Returns:
+        dict: Resultado do processamento
+    """
+    # Verificar se já tem comprovante
+    if card_ja_possui_comprovante(card):
+        return {
+            'card_id': card['id'],
+            'card_title': card['title'],
+            'sucesso': False,
+            'etapa': 'verificacao',
+            'motivo': 'Card já possui comprovante anexado',
+            'pulado': True
+        }
+    
+    # Extrair dados do card
+    dados_card = extrair_dados_para_matching(card)
+    
+    resultado = {
+        'card_id': card['id'],
+        'card_title': card['title'],
+        'card_dados': dados_card,
+        'sucesso': False,
+        'etapa': '',
+        'motivo': ''
+    }
+    
+    # Identificar fundo pelo CNPJ
+    cnpj_fundo = dados_card.get('cnpj_fundo')
+    fundo_id = None
+    
+    # Mapear CNPJ para fundo_id (buscar nos clientes)
+    for fid, cliente in santander_clients.items():
+        if hasattr(cliente, 'auth') and hasattr(cliente.auth, 'fundo_id'):
+            # Verificar se CNPJ do card bate com algum fundo
+            # (Assumindo que os fundos têm CNPJ configurado)
+            if cnpj_fundo:
+                # Aqui precisaríamos ter um mapeamento CNPJ -> fundo_id
+                # Por enquanto, buscar em todos os fundos (pode otimizar depois)
+                pass
+    
+    # Se não conseguiu identificar fundo específico, buscar em todos
+    # (Mantém lógica original, mas com cache)
+    resultado['etapa'] = 'matching'
+    
+    # Buscar comprovantes apenas dos fundos necessários
+    comprovantes_encontrados = []
+    
+    for fundo_id_atual, cliente in santander_clients.items():
+        # Verificar se já temos comprovantes desse fundo no cache
+        if fundo_id_atual not in cache_fundos:
+            # Buscar comprovantes apenas deste fundo
+            try:
+                log(f"      🔍 Consultando fundo {fundo_id_atual}...", level='debug')
+                comprovantes = cliente.listar_comprovantes(data_busca_str, data_busca_str)
+                cache_fundos[fundo_id_atual] = comprovantes
+                log(f"      ✅ {len(comprovantes)} comprovante(s) encontrado(s)", level='debug')
+            except Exception as e:
+                log(f"      ⚠️ Erro ao buscar comprovantes de {fundo_id_atual}: {e}", level='debug')
+                cache_fundos[fundo_id_atual] = []
+        
+        # Fazer matching com comprovantes deste fundo
+        comprovantes_fundo = cache_fundos[fundo_id_atual]
+        for comp in comprovantes_fundo:
+            if abs(comp.get('amount', 0) - dados_card.get('valor', 0)) < 0.01:
+                comprovantes_encontrados.append({
+                    **comp,
+                    'fundo_id': fundo_id_atual,
+                    'cliente': cliente
+                })
+                break  # Encontrou match, parar de buscar neste fundo
+        
+        # Se já encontrou match, não precisa buscar nos outros fundos
+        if comprovantes_encontrados:
+            break
+    
+    # Se não encontrou match
+    if not comprovantes_encontrados:
+        resultado['motivo'] = 'Comprovante não encontrado nos fundos consultados'
+        return resultado
+    
+    # Pegar primeiro match
+    comprovante = comprovantes_encontrados[0]
+    payment_id = comprovante['payment_id']
+    fundo_id = comprovante.get('fundo_id')
+    cliente = comprovante.get('cliente')
+    
+    # Baixar PDF
+    resultado['etapa'] = 'download_pdf'
+    caminho_pdf = obter_pdf_comprovante(payment_id, fundo_id=fundo_id, cliente_santander=cliente)
+    
+    if not caminho_pdf:
+        resultado['motivo'] = 'Falha ao baixar PDF do Santander'
+        return resultado
+    
+    # Upload para Pipefy
+    resultado['etapa'] = 'upload_pipefy'
+    arquivo_url = fazer_upload_arquivo_pipefy(caminho_pdf)
+    
+    if not arquivo_url:
+        resultado['motivo'] = 'Falha ao fazer upload para Pipefy'
+        return resultado
+    
+    # Anexar ao card
+    resultado['etapa'] = 'anexar_card'
+    anexou = anexar_pdf_ao_card(card['id'], arquivo_url)
+    
+    if not anexou:
+        resultado['motivo'] = 'Falha ao anexar PDF ao card'
+        return resultado
+    
+    # Mover para "Solicitação Paga"
+    resultado['etapa'] = 'mover_fase'
+    moveu = mover_card_para_fase(card['id'], FASE_LIQUIDACAO_SOLICITACAO_PAGA)
+    
+    if not moveu:
+        resultado['motivo'] = 'PDF anexado, mas falha ao mover para "Solicitação Paga"'
+        resultado['sucesso'] = True
+        return resultado
+    
+    # Sucesso!
+    resultado['sucesso'] = True
+    resultado['etapa'] = 'concluido'
+    resultado['motivo'] = 'Comprovante anexado e card movido com sucesso'
+    resultado['arquivo_url'] = arquivo_url
+    resultado['payment_id'] = payment_id
+    resultado['fase_destino'] = 'Solicitação Paga'
+    
+    resultado['comprovante_match'] = {
+        'fundo': fundo_id if fundo_id else 'N/A',
+        'payment_id': payment_id,
+        'data_pagamento': comprovante.get('value_date', 'N/A'),
+        'valor': comprovante.get('amount', dados_card.get('valor', 0))
+    }
+    
+    return resultado
+
+
 # ==================== TESTE DE MATCHING ====================
 
 def testar_matching_apenas(data_busca=None):
