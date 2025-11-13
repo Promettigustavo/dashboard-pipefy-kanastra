@@ -65,8 +65,11 @@ output.txt
 *.xlsx
 *.xls
 *.json
+# Exceções - bases de dados necessárias
 !fases_pipes.json
 !ExtratosAutomaticos.xlsx
+!Basedadosfundos.xlsx
+!Basedadosfundos_Arbi.xlsx
 
 # Logs
 *.log
