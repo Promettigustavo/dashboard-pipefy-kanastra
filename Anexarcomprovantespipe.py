@@ -1692,28 +1692,44 @@ def processar_card_otimizado(card, data_busca_str, cache_fundos):
         'motivo': ''
     }
     
-    # Identificar fundo pelo CNPJ
-    cnpj_fundo = dados_card.get('cnpj_fundo')
-    fundo_id = None
+    # ====================================================================
+    # OTIMIZAÇÃO: Identificar fundo específico pelo CNPJ do card
+    # ====================================================================
+    cnpj_fundo_card = dados_card.get('cnpj_fundo', '').replace('.', '').replace('/', '').replace('-', '')
+    fundo_id_especifico = None
+    cliente_especifico = None
     
-    # Mapear CNPJ para fundo_id (buscar nos clientes)
-    for fid, cliente in santander_clients.items():
-        if hasattr(cliente, 'auth') and hasattr(cliente.auth, 'fundo_id'):
-            # Verificar se CNPJ do card bate com algum fundo
-            # (Assumindo que os fundos têm CNPJ configurado)
-            if cnpj_fundo:
-                # Aqui precisaríamos ter um mapeamento CNPJ -> fundo_id
-                # Por enquanto, buscar em todos os fundos (pode otimizar depois)
-                pass
+    # Mapear CNPJ do card → fundo_id
+    if cnpj_fundo_card:
+        for fid, cliente in santander_clients.items():
+            if hasattr(cliente, 'auth') and hasattr(cliente.auth, 'fundo_cnpj'):
+                cnpj_cliente = cliente.auth.fundo_cnpj.replace('.', '').replace('/', '').replace('-', '')
+                if cnpj_cliente == cnpj_fundo_card:
+                    fundo_id_especifico = fid
+                    cliente_especifico = cliente
+                    log(f"      ✅ Fundo identificado: {fid} (CNPJ: {cnpj_fundo_card})", level='debug')
+                    break
+        
+        if not fundo_id_especifico:
+            log(f"      ⚠️ CNPJ {cnpj_fundo_card} não encontrado nos fundos configurados", level='debug')
     
-    # Se não conseguiu identificar fundo específico, buscar em todos
-    # (Mantém lógica original, mas com cache)
     resultado['etapa'] = 'matching'
     
-    # Buscar comprovantes apenas dos fundos necessários
+    # ====================================================================
+    # Se identificou fundo específico, buscar APENAS dele
+    # Caso contrário, buscar de todos (fallback para cards sem CNPJ)
+    # ====================================================================
     comprovantes_encontrados = []
     
-    for fundo_id_atual, cliente in santander_clients.items():
+    # Lista de fundos a consultar (1 específico OU todos)
+    if fundo_id_especifico:
+        fundos_para_consultar = [(fundo_id_especifico, cliente_especifico)]
+        log(f"      🎯 Busca direcionada: apenas fundo {fundo_id_especifico}", level='debug')
+    else:
+        fundos_para_consultar = list(santander_clients.items())
+        log(f"      🔍 Busca ampla: todos os {len(fundos_para_consultar)} fundos", level='debug')
+    
+    for fundo_id_atual, cliente in fundos_para_consultar:
         # Verificar se já temos comprovantes desse fundo no cache
         if fundo_id_atual not in cache_fundos:
             # Buscar comprovantes apenas deste fundo
