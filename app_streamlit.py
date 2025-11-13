@@ -517,6 +517,7 @@ def get_available_modules():
         'Amortizacao': 'Amortizacao',
         'Anexarcomprovantespipe': 'Anexarcomprovantespipe',
         'Anexarcomprovantespipetaxas': 'Anexarcomprovantespipetaxas',
+        'buscar_comprovantes_santander': 'buscar_comprovantes_santander',
         'integrador': 'integrador',
         'auto_pipeliquidacao': 'auto_pipeliquidacao',
         'auto_pipetaxas': 'auto_pipetaxas',
