@@ -429,8 +429,6 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     """
     from pathlib import Path
     
-    st.write(f"🔑 Criando autenticação para fundo {fundo_id}")
-    
     # Obter credenciais
     fundos, source = get_santander_credentials()
     
@@ -448,16 +446,13 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             cert_pem = st.secrets["santander_fundos"]["cert_pem"]
             # Converter \n literais em quebras de linha reais
             cert_pem = cert_pem.replace('\\n', '\n')
-            st.write(f"✅ cert_pem encontrado no secrets ({len(cert_pem)} bytes)")
         if "key_pem" in st.secrets["santander_fundos"]:
             key_pem = st.secrets["santander_fundos"]["key_pem"]
             # Converter \n literais em quebras de linha reais
             key_pem = key_pem.replace('\\n', '\n')
-            st.write(f"✅ key_pem encontrado no secrets ({len(key_pem)} bytes)")
     
     # Se tiver certificados no secrets, criar arquivos temporários
     if cert_pem and key_pem:
-        st.write(f"🔧 Criando arquivos temporários para certificados...")
         import tempfile
         
         temp_dir = Path(tempfile.gettempdir()) / "santander_certs"
@@ -477,43 +472,14 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 key_pem += '\n'
             f.write(key_pem)
         
-        st.write(f"✅ Certificados temporários criados:")
-        st.write(f"  📄 Cert: `{cert_path}`")
-        st.write(f"  🔑 Key: `{key_path}`")
-        
     else:
         # FALLBACK: Tentar usar certificados do repositório
-        st.write(f"⚠️ Certificados não encontrados no secrets, tentando repositório...")
         cert_path = Path(__file__).parent / "certificados" / "santander_cert.pem"
         key_path = Path(__file__).parent / "certificados" / "santander_key.pem"
-    
-    st.write(f"📂 **Diretório do script**: `{Path(__file__).parent}`")
-    st.write(f"📂 **Certificado**: `{cert_path}`")
-    st.write(f"📂 **Chave**: `{key_path}`")
     
     # Verificar se arquivos existem
     cert_exists = cert_path.exists()
     key_exists = key_path.exists()
-    
-    st.write(f"✅ Cert existe: **{cert_exists}**")
-    st.write(f"✅ Key existe: **{key_exists}**")
-    
-    # Se existem, mostrar primeiras linhas
-    if cert_exists:
-        try:
-            with open(cert_path, 'r') as f:
-                first_line = f.readline().strip()
-                st.write(f"  📄 Primeira linha cert: `{first_line}`")
-        except Exception as e:
-            st.error(f"❌ Erro ao ler cert: {e}")
-    
-    if key_exists:
-        try:
-            with open(key_path, 'r') as f:
-                first_line = f.readline().strip()
-                st.write(f"  🔑 Primeira linha key: `{first_line}`")
-        except Exception as e:
-            st.error(f"❌ Erro ao ler key: {e}")
     
     if not cert_path.exists():
         # Listar o que tem na pasta certificados
@@ -564,43 +530,31 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             from datetime import datetime, timedelta
             from pathlib import Path
             
-            st.write(f"🔐 Obtendo token de autenticação...")
-            
             # Verificar se já tem token válido
             if hasattr(self, '_token') and hasattr(self, '_token_expiry'):
                 if datetime.now() < self._token_expiry:
-                    st.write(f"✅ Token ainda válido")
                     return self._token
             
             token_url = self.base_urls[self.ambiente]["token"]
-            st.write(f"🌐 URL: {token_url}")
-            st.write(f"🆔 Client ID: {self.client_id[:20]}...")
             
             # Verificar se certificados existem
-            st.write(f"🔍 Verificando existência dos certificados...")
-            st.write(f"  Cert: {Path(self.cert_path).exists()}")
-            st.write(f"  Key: {Path(self.key_path).exists()}")
-            
             if not Path(self.cert_path).exists():
                 raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
             if not Path(self.key_path).exists():
                 raise FileNotFoundError(f"Chave privada não encontrada: {self.key_path}")
             
             # Ler e validar formato dos certificados
-            st.write(f"📖 Lendo e validando certificados...")
             try:
                 with open(self.cert_path, 'r') as f:
                     cert_content = f.read()
                     if not cert_content.startswith('-----BEGIN CERTIFICATE-----'):
                         raise ValueError(f"Certificado inválido: não começa com -----BEGIN CERTIFICATE-----")
-                    st.write(f"  ✅ Certificado OK ({len(cert_content)} bytes)")
                     
                 with open(self.key_path, 'r') as f:
                     key_content = f.read()
                     if not (key_content.startswith('-----BEGIN RSA PRIVATE KEY-----') or 
                            key_content.startswith('-----BEGIN PRIVATE KEY-----')):
                         raise ValueError(f"Chave privada inválida: formato não reconhecido")
-                    st.write(f"  ✅ Chave privada OK ({len(key_content)} bytes)")
             except Exception as e:
                 st.error(f"❌ Erro ao ler certificados: {str(e)}")
                 raise ValueError(f"Erro ao ler certificados: {str(e)}")
@@ -617,32 +571,22 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 'client_secret': self.client_secret
             }
             
-            st.write(f"🚀 Fazendo requisição POST para obter token...")
-            st.write(f"  URL: {token_url}")
-            st.write(f"  Headers: Content-Type + X-Application-Key")
-            st.write(f"  Cert: {self.cert_path}")
-            st.write(f"  Key: {self.key_path}")
-            
             try:
                 response = requests.post(
                     token_url,
-                    headers=headers,  # ← ADICIONADO!
+                    headers=headers,
                     data=data,
                     cert=(self.cert_path, self.key_path),
                     verify=True,
                     timeout=30
                 )
-                st.write(f"✅ Requisição bem-sucedida! Status: {response.status_code}")
             except requests.exceptions.SSLError as e:
-                # Log detalhado do erro SSL
-                st.error(f"❌ ERRO SSL: {str(e)}")
-                st.error(f"Tipo: {type(e)}")
-                st.error(f"Args: {e.args}")
+                st.error(f"❌ Erro SSL ao conectar com Santander: {str(e)}")
                 raise Exception(f"Erro SSL ao conectar com Santander: {str(e)}. Verifique se os certificados estão corretos e no formato PEM válido.")
             
             if response.status_code == 200:
                 token_data = response.json()
-                self.token_data = token_data  # ← ADICIONADO: Salva o token_data completo
+                self.token_data = token_data
                 self._token = token_data.get('access_token')
                 # Token válido por 1 hora (padrão OAuth2)
                 expires_in = token_data.get('expires_in', 3600)
@@ -664,7 +608,6 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
         
         def _get_cert_tuple(self):
             """Retorna tupla (cert_path, key_path) para uso no requests"""
-            st.write(f"📜 Retornando certificados: ({self.cert_path}, {self.key_path})")
             return (self.cert_path, self.key_path)
     
     return SantanderAuthFromSecrets()
@@ -2295,7 +2238,7 @@ elif aba_selecionada == "📎 Comprovantes":
                                         clientes_santander=clientes_santander
                                     )
                                 except Exception as e_proc:
-                                    st.error(f"🔍 DEBUG: Erro ao processar: {e_proc}")
+                                    st.error(f"❌ Erro ao processar cards: {e_proc}")
                                     import traceback
                                     st.code(traceback.format_exc())
                                     resultados = None
