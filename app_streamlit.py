@@ -418,6 +418,17 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     
     fundo = fundos[fundo_id]
     
+    # Verificar se há certificados globais compartilhados
+    cert_path_global = None
+    key_path_global = None
+    
+    if "santander_fundos" in st.secrets:
+        # Verificar se há cert_path e key_path no nível raiz de santander_fundos
+        if "cert_path" in st.secrets["santander_fundos"]:
+            cert_path_global = st.secrets["santander_fundos"]["cert_path"]
+        if "key_path" in st.secrets["santander_fundos"]:
+            key_path_global = st.secrets["santander_fundos"]["key_path"]
+    
     # Criar objeto de autenticação
     class SantanderAuthFromSecrets:
         def __init__(self):
@@ -440,25 +451,25 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 }
             }
             
-            # Certificados - múltiplas opções de configuração
-            # Opção 1: cert_path e key_path específicos do fundo (modo local)
-            if "cert_path" in fundo and "key_path" in fundo:
-                self.cert_path = fundo["cert_path"]
-                self.key_path = fundo["key_path"]
-                
-            # Opção 2: Certificados compartilhados no repositório (todos os fundos usam os mesmos)
-            elif "cert_path" in fundos or "key_path" in fundos:
-                # Certificados globais definidos fora das seções de fundos
-                self.cert_path = fundos.get("cert_path", "")
-                self.key_path = fundos.get("key_path", "")
+            # Certificados - múltiplas opções de configuração (ORDEM IMPORTA!)
+            
+            # Opção 1 (PRIORIDADE): Certificados compartilhados globais no repositório
+            if cert_path_global and key_path_global:
+                self.cert_path = cert_path_global
+                self.key_path = key_path_global
                 
                 # Se for path relativo, resolver a partir do diretório do projeto
-                if self.cert_path and not Path(self.cert_path).is_absolute():
+                if not Path(self.cert_path).is_absolute():
                     self.cert_path = str(Path(__file__).parent / self.cert_path)
-                if self.key_path and not Path(self.key_path).is_absolute():
+                if not Path(self.key_path).is_absolute():
                     self.key_path = str(Path(__file__).parent / self.key_path)
                     
-            # Opção 3: Conteúdo PEM em base64 no secrets (cloud)
+            # Opção 2: cert_path e key_path específicos do fundo (modo local)
+            elif "cert_path" in fundo and "key_path" in fundo:
+                self.cert_path = fundo["cert_path"]
+                self.key_path = fundo["key_path"]
+                    
+            # Opção 3: Conteúdo PEM em base64 no secrets (fallback)
             elif "cert_base64" in fundo and "key_base64" in fundo:
                 cert_pem = fundo["cert_base64"]
                 key_pem = fundo["key_base64"]
