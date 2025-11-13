@@ -1865,9 +1865,15 @@ elif aba_selecionada == "📎 Comprovantes":
         
         st.markdown("---")
         
+        # Inicializar session_state para armazenar comprovantes listados
+        if 'comprovantes_listados' not in st.session_state:
+            st.session_state.comprovantes_listados = []
+        if 'data_busca_atual' not in st.session_state:
+            st.session_state.data_busca_atual = None
+        
         # Botão Buscar Comprovantes
         btn_disabled = len(fundos_selecionados) == 0
-        btn_label = "🔍 Buscar Comprovantes via API" if not btn_disabled else "⚠️ Selecione fundos para buscar"
+        btn_label = "🔍 Listar Comprovantes Disponíveis" if not btn_disabled else "⚠️ Selecione fundos para buscar"
         
         if st.button(
             btn_label,
@@ -1876,24 +1882,28 @@ elif aba_selecionada == "📎 Comprovantes":
             key="btn_buscar_santander",
             disabled=btn_disabled
         ):
+            # Limpar lista anterior se mudou a data
+            if st.session_state.data_busca_atual != data_busca_santander:
+                st.session_state.comprovantes_listados = []
+                st.session_state.data_busca_atual = data_busca_santander
+            
             st.markdown("---")
-            st.markdown("### 🔍 Busca de Comprovantes")
+            st.markdown("### 🔍 Listando Comprovantes Disponíveis")
             
             # Container para logs
             log_placeholder = st.empty()
             progress_bar = st.progress(0)
             
-            # Resultados
-            comprovantes_encontrados = 0
-            comprovantes_baixados = 0
-            erros_fundos = []
-            
             try:
                 data_busca_str = data_busca_santander.strftime("%Y-%m-%d")
                 total_fundos = len(fundos_selecionados)
                 
-                st.info(f"📅 Buscando comprovantes de **{data_busca_str}** em **{total_fundos}** fundo(s)")
-                st.info(f"📁 Destino: `{pasta_destino}`")
+                st.info(f"📅 Consultando comprovantes de **{data_busca_str}** em **{total_fundos}** fundo(s)")
+                
+                # Variáveis de controle
+                comprovantes_encontrados = 0
+                comprovantes_baixados = 0
+                erros_fundos = []
                 
                 # Verificar se módulo de busca existe
                 module_buscar, error = get_module('buscar_comprovantes_santander')
