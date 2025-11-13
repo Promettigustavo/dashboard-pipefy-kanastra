@@ -336,6 +336,63 @@ def run_conversor_v2c(log_list: list, selected_path: Path, out_dir: str | None):
         log_list.append(f"❌ ERRO: {str(e)}")
         log_list.append(traceback.format_exc())
 
+# ===== HELPER: CARREGAR CREDENCIAIS SANTANDER =====
+def get_santander_credentials():
+    """
+    Carrega credenciais Santander de forma híbrida:
+    1. Tenta arquivo local credenciais_bancos.py (desenvolvimento)
+    2. Fallback para st.secrets (produção/cloud)
+    
+    Retorna: (SANTANDER_FUNDOS_dict, source_string)
+    """
+    try:
+        # Tentar importar do arquivo local
+        import sys
+        from pathlib import Path
+        
+        current_dir = Path(__file__).parent
+        if str(current_dir) not in sys.path:
+            sys.path.insert(0, str(current_dir))
+        
+        from credenciais_bancos import SANTANDER_FUNDOS
+        return SANTANDER_FUNDOS, "local"
+        
+    except ImportError:
+        # Comportamento esperado no cloud - não é erro!
+        # Fallback para secrets
+        if "santander_fundos" in st.secrets:
+            # Converter secrets para dict no formato esperado
+            fundos_dict = {}
+            for fundo_id in st.secrets["santander_fundos"].keys():
+                fundo_secrets = st.secrets["santander_fundos"][fundo_id]
+                
+                # Montar dict no formato do credenciais_bancos.py
+                fundos_dict[fundo_id] = {
+                    "nome": fundo_secrets.get("nome", ""),
+                    "cnpj": fundo_secrets.get("cnpj", ""),
+                    "client_id": fundo_secrets.get("client_id", ""),
+                    "client_secret": fundo_secrets.get("client_secret", ""),
+                }
+                
+                # Certificados podem estar em base64 ou path
+                if "cert_base64" in fundo_secrets:
+                    fundos_dict[fundo_id]["cert_base64"] = fundo_secrets["cert_base64"]
+                if "key_base64" in fundo_secrets:
+                    fundos_dict[fundo_id]["key_base64"] = fundo_secrets["key_base64"]
+                if "cert_path" in fundo_secrets:
+                    fundos_dict[fundo_id]["cert_path"] = fundo_secrets["cert_path"]
+                if "key_path" in fundo_secrets:
+                    fundos_dict[fundo_id]["key_path"] = fundo_secrets["key_path"]
+            
+            return fundos_dict, "secrets"
+        else:
+            # Nenhuma fonte de credenciais disponível (esperado se não configurado)
+            return {}, "none"
+    
+    except Exception as e:
+        # Erro inesperado ao processar credenciais
+        return {}, f"error: {str(e)}"
+
 # Configuração do repositório GitHub
 try:
     from config_streamlit import GITHUB_REPO, GITHUB_BRANCH
@@ -1541,28 +1598,32 @@ elif aba_selecionada == "📎 Comprovantes":
         # Seleção de fundos Santander
         st.markdown("**💼 Fundos Santander**")
         
-        # Importar lista de fundos
-        try:
-            # Importar módulo credenciais_bancos
-            import sys
-            from pathlib import Path
-            
-            # Garantir que o path do módulo está no sys.path
-            current_dir = Path(__file__).parent
-            if str(current_dir) not in sys.path:
-                sys.path.insert(0, str(current_dir))
-            
-            from credenciais_bancos import SANTANDER_FUNDOS
+        # Carregar credenciais usando função helper
+        SANTANDER_FUNDOS, credenciais_source = get_santander_credentials()
+        
+        if credenciais_source == "none":
+            st.warning("⚙️ Credenciais Santander não configuradas")
+            with st.expander("ℹ️ Como configurar credenciais", expanded=False):
+                st.markdown("""
+                **Desenvolvimento Local:**
+                - Crie o arquivo `credenciais_bancos.py` na raiz do projeto
+                - Consulte `CREDENTIALS_SETUP.md` para detalhes
+                
+                **Streamlit Cloud:**
+                - Acesse Settings > Secrets no dashboard
+                - Copie o conteúdo de `.streamlit/secrets.toml.example`
+                - Substitua com suas credenciais reais
+                - Salve e o app reiniciará automaticamente
+                
+                📚 **Documentação completa**: `CREDENTIALS_SETUP.md`
+                """)
+            fundos_disponiveis = []
+        elif credenciais_source.startswith("error"):
+            st.error(f"❌ Erro ao carregar credenciais: {credenciais_source}")
+            fundos_disponiveis = []
+        else:
             fundos_disponiveis = sorted(list(SANTANDER_FUNDOS.keys()))
-            
-            if len(fundos_disponiveis) == 0:
-                st.warning("⚠️ Lista de fundos Santander vazia")
-        except ImportError as e:
-            fundos_disponiveis = []
-            st.error(f"❌ Erro ao importar credenciais_bancos: {str(e)}")
-        except Exception as e:
-            fundos_disponiveis = []
-            st.error(f"❌ Erro ao carregar fundos: {str(e)}")
+            st.caption(f"✅ Credenciais carregadas: {credenciais_source} • {len(fundos_disponiveis)} fundos disponíveis")
         
         # Campo de busca/filtro
         filtro_fundo = st.text_input(
