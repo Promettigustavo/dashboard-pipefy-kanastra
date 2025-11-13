@@ -305,26 +305,16 @@ with tab_liquidacao:
         with col2:
             st.markdown("### ⚙️ Configurações")
             
-            # Período de busca de comprovantes
-            st.markdown("**📅 Período de Pagamento:**")
+            # Data de pagamento
+            st.markdown("**📅 Data de Pagamento:**")
             
-            col_data1, col_data2 = st.columns(2)
+            data_pagamento_api = st.date_input(
+                "Data de pagamento",
+                value=dt.date.today(),
+                key="data_pagamento_auto"
+            )
             
-            with col_data1:
-                data_inicio = st.date_input(
-                    "Data início",
-                    value=dt.date.today() - timedelta(days=7),
-                    key="data_inicio_auto"
-                )
-            
-            with col_data2:
-                data_fim = st.date_input(
-                    "Data fim",
-                    value=dt.date.today(),
-                    key="data_fim_auto"
-                )
-            
-            st.caption("💡 Período para buscar comprovantes na API Santander (máx. 30 dias)")
+            st.caption("💡 Data que será incluída no arquivo de processamento")
             
             st.markdown("---")
             
@@ -357,9 +347,8 @@ with tab_liquidacao:
                     try:
                         st.session_state.status_auto = "▶️ Executando..."
                         
-                        # Formatar datas
-                        data_inicio_str = data_inicio.strftime("%Y-%m-%d")
-                        data_fim_str = data_fim.strftime("%Y-%m-%d")
+                        # Formatar data
+                        data_str = data_pagamento_api.strftime("%Y-%m-%d")
                         
                         resultado = None
                         arquivo_saida = None
@@ -369,17 +358,17 @@ with tab_liquidacao:
                             module, error = get_module('auto_pipeliquidacao')
                             if module:
                                 st.info(f"🔄 Executando Auto Liquidação via API Pipefy...")
-                                st.info(f"📅 Período: {data_inicio_str} a {data_fim_str}")
+                                st.info(f"📅 Data de pagamento: {data_str}")
                                 resultado = module.main()
-                                arquivo_saida = f"auto_liquidacao_{data_fim_str}.xlsx"
+                                arquivo_saida = f"auto_liquidacao_{data_str}.xlsx"
                             else:
                                 # Fallback: usar módulo de anexar comprovantes
                                 module_fallback, error_fb = get_module('Anexarcomprovantespipe')
                                 if module_fallback:
                                     st.info(f"🔄 Executando anexação de comprovantes (Liquidação)...")
-                                    st.info(f"📅 Período: {data_inicio_str} a {data_fim_str}")
+                                    st.info(f"📅 Data de pagamento: {data_str}")
                                     resultado = module_fallback.main()
-                                    arquivo_saida = f"comprovantes_liquidacao_{data_fim_str}.xlsx"
+                                    arquivo_saida = f"comprovantes_liquidacao_{data_str}.xlsx"
                                 else:
                                     st.error(f"❌ Módulo de automação não disponível: {error or error_fb}")
                         
@@ -387,17 +376,17 @@ with tab_liquidacao:
                             module, error = get_module('auto_pipetaxas')
                             if module:
                                 st.info(f"🔄 Executando Auto Taxas via API Pipefy...")
-                                st.info(f"📅 Período: {data_inicio_str} a {data_fim_str}")
+                                st.info(f"📅 Data de pagamento: {data_str}")
                                 resultado = module.main()
-                                arquivo_saida = f"auto_taxas_{data_fim_str}.xlsx"
+                                arquivo_saida = f"auto_taxas_{data_str}.xlsx"
                             else:
                                 # Fallback: usar módulo de anexar comprovantes taxas
                                 module_fallback, error_fb = get_module('Anexarcomprovantespipetaxas')
                                 if module_fallback:
                                     st.info(f"🔄 Executando anexação de comprovantes (Taxas)...")
-                                    st.info(f"📅 Período: {data_inicio_str} a {data_fim_str}")
+                                    st.info(f"📅 Data de pagamento: {data_str}")
                                     resultado = module_fallback.main()
-                                    arquivo_saida = f"comprovantes_taxas_{data_fim_str}.xlsx"
+                                    arquivo_saida = f"comprovantes_taxas_{data_str}.xlsx"
                                 else:
                                     st.error(f"❌ Módulo de automação não disponível: {error or error_fb}")
                         
@@ -405,9 +394,9 @@ with tab_liquidacao:
                             module, error = get_module('auto_amortizacao')
                             if module:
                                 st.info(f"🔄 Executando Auto Amortização via API Pipefy...")
-                                st.info(f"📅 Data de referência: {data_fim_str}")
+                                st.info(f"📅 Data de referência: {data_str}")
                                 resultado = module.main()
-                                arquivo_saida = f"auto_amortizacao_{data_fim_str}.xlsx"
+                                arquivo_saida = f"auto_amortizacao_{data_str}.xlsx"
                             else:
                                 st.error(f"❌ Módulo auto_amortizacao não disponível: {error}")
                         
@@ -415,9 +404,9 @@ with tab_liquidacao:
                             module, error = get_module('auto_taxasanbima')
                             if module:
                                 st.info(f"🔄 Executando Auto Taxas ANBIMA...")
-                                st.info(f"📅 Data de referência: {data_fim_str}")
+                                st.info(f"📅 Data de referência: {data_str}")
                                 resultado = module.main()
-                                arquivo_saida = f"taxas_anbima_{data_fim_str}.xlsx"
+                                arquivo_saida = f"taxas_anbima_{data_str}.xlsx"
                             else:
                                 st.error(f"❌ Módulo auto_taxasanbima não disponível: {error}")
                         
