@@ -2335,11 +2335,15 @@ elif aba_selecionada == "📎 Comprovantes":
                         # Preparar dados para tabela
                         tabela_data = []
                         for card in cards_movidos:
+                            # Extrair dados do comprovante_match se disponível
+                            comprovante_info = card.get('comprovante_match', {})
+                            card_dados = card.get('card_dados', {})
+                            
                             tabela_data.append({
                                 "Pipe": card.get('pipe', 'N/A'),
-                                "Fundo": card.get('fundo', 'N/A'),
-                                "Beneficiário": card.get('beneficiario', card.get('card_title', 'N/A')),
-                                "Valor": f"R$ {card.get('valor', 0):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
+                                "Fundo": comprovante_info.get('fundo', card.get('fundo', 'N/A')),
+                                "Beneficiário": card_dados.get('beneficiario', card.get('beneficiario', card.get('card_title', 'N/A'))),
+                                "Valor": f"R$ {comprovante_info.get('valor', card_dados.get('valor', card.get('valor', 0))):,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'),
                                 "Match": card.get('tipo_match', 'Valor + Nome')
                             })
                         
@@ -2356,11 +2360,17 @@ elif aba_selecionada == "📎 Comprovantes":
                         st.markdown("#### 📊 Resumo por Fundo")
                         resumo_fundos = {}
                         for card in cards_movidos:
-                            fundo = card.get('fundo', 'N/A')
+                            # Extrair fundo e valor do comprovante_match
+                            comprovante_info = card.get('comprovante_match', {})
+                            card_dados = card.get('card_dados', {})
+                            
+                            fundo = comprovante_info.get('fundo', card.get('fundo', 'N/A'))
+                            valor = comprovante_info.get('valor', card_dados.get('valor', card.get('valor', 0)))
+                            
                             if fundo not in resumo_fundos:
                                 resumo_fundos[fundo] = {'count': 0, 'valor_total': 0}
                             resumo_fundos[fundo]['count'] += 1
-                            resumo_fundos[fundo]['valor_total'] += card.get('valor', 0)
+                            resumo_fundos[fundo]['valor_total'] += valor
                         
                         for fundo, info in sorted(resumo_fundos.items()):
                             st.write(f"**{fundo}**: {info['count']} card(s) • Total: R$ {info['valor_total']:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
