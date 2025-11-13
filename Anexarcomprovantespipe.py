@@ -1334,14 +1334,23 @@ def processar_card_completo(card, cache_comprovantes=None):
     return resultado
 
 
-def processar_todos_cards(data_busca=None):
+def processar_todos_cards(data_busca=None, clientes_santander=None):
     """
     Processa todos os cards da fase "Aguardando Comprovante"
     Busca comprovantes e anexa PDFs automaticamente
     
     Args:
         data_busca: Data para buscar comprovantes (formato YYYY-MM-DD). Se None, usa hoje.
+        clientes_santander: Dict com clientes SantanderComprovantes já inicializados (opcional).
+                           Se fornecido, usa esses clientes em vez dos globais.
     """
+    global santander_clients
+    
+    # Se recebeu clientes externos, usar eles
+    if clientes_santander:
+        log(f"📦 Usando {len(clientes_santander)} cliente(s) Santander fornecidos externamente")
+        santander_clients = clientes_santander
+    
     # Salvar data de busca para usar no relatório final
     global data_busca_str
     from datetime import date

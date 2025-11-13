@@ -2226,6 +2226,44 @@ elif aba_selecionada == "📎 Comprovantes":
                 
                 st.info(f"📅 Processando cards com data de referência: **{data_busca_str}**")
                 
+                # Criar clientes Santander para todos os fundos configurados
+                st.write("🔍 DEBUG: Criando clientes Santander...")
+                clientes_santander = {}
+                
+                try:
+                    # Carregar fundos configurados
+                    fundos_creds, source = get_santander_credentials()
+                    st.write(f"🔍 DEBUG: Fundos disponíveis: {len(fundos_creds)}")
+                    
+                    if fundos_creds and source != "none":
+                        # Importar módulo de comprovantes
+                        module_buscar, _ = get_module('buscar_comprovantes_santander')
+                        
+                        if module_buscar and hasattr(module_buscar, 'SantanderComprovantes'):
+                            st.write("🔍 DEBUG: Classe SantanderComprovantes encontrada")
+                            
+                            # Criar cliente para cada fundo
+                            for fundo_id in fundos_creds.keys():
+                                try:
+                                    # Criar autenticação
+                                    auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
+                                    if auth:
+                                        # Criar cliente
+                                        clientes_santander[fundo_id] = module_buscar.SantanderComprovantes(auth)
+                                except Exception as e_fundo:
+                                    st.warning(f"⚠️ Erro ao criar cliente para {fundo_id}: {e_fundo}")
+                            
+                            st.write(f"🔍 DEBUG: {len(clientes_santander)} cliente(s) criado(s)")
+                            st.write(f"🔍 DEBUG: Fundos com clientes: {list(clientes_santander.keys())[:5]}")
+                        else:
+                            st.error("❌ Classe SantanderComprovantes não encontrada")
+                    else:
+                        st.error("❌ Nenhum fundo configurado")
+                except Exception as e_clientes:
+                    st.error(f"❌ Erro ao criar clientes: {e_clientes}")
+                    import traceback
+                    st.code(traceback.format_exc())
+                
                 # Processar Pipe Liquidação
                 if pipe_liquidacao:
                     pipe_atual += 1
@@ -2276,10 +2314,13 @@ elif aba_selecionada == "📎 Comprovantes":
                                 st.caption("💡 O módulo está buscando comprovantes na API Santander e fazendo matching com os cards do Pipefy. Aguarde...")
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
-                                st.write("🔍 DEBUG: Chamando processar_todos_cards...")
-                                # Processar
+                                st.write(f"🔍 DEBUG: Chamando processar_todos_cards com {len(clientes_santander)} clientes...")
+                                # Processar - PASSANDO OS CLIENTES
                                 try:
-                                    resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                    resultados = module.processar_todos_cards(
+                                        data_busca=data_busca_str,
+                                        clientes_santander=clientes_santander
+                                    )
                                     st.write(f"🔍 DEBUG: Retornou resultados: {type(resultados)}")
                                     if resultados:
                                         st.write(f"🔍 DEBUG: Quantidade de resultados: {len(resultados)}")
@@ -2330,8 +2371,11 @@ elif aba_selecionada == "📎 Comprovantes":
                                 st.caption("💡 O módulo está buscando comprovantes na API Santander e fazendo matching com os cards do Pipefy. Aguarde...")
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
-                                # Processar
-                                resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                # Processar - PASSANDO OS CLIENTES
+                                resultados = module.processar_todos_cards(
+                                    data_busca=data_busca_str,
+                                    clientes_santander=clientes_santander
+                                )
                                 progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:
