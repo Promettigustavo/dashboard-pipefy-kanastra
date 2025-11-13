@@ -1,4 +1,4 @@
-"""
+﻿"""
 Dashboard Streamlit - Sistema de Integração Pipefy
 Versão simplificada com 3 abas: Liquidação, CETIP e Comprovantes
 """
@@ -1322,8 +1322,6 @@ elif aba_selecionada == "🏦 CETIP":
                     
                     # Processar NC
                     if executar_nc:
-                        log_cetip.append("─" * 60)
-                        log_cetip.append("� [NC] Iniciando Emissão de NC...")
                         log_cetip.append("─" * 60)
                         log_cetip.append("📄 EMISSÃO NC")
                         log_cetip.append("─" * 60)
