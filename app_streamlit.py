@@ -359,8 +359,19 @@ with tab_liquidacao:
                             if module:
                                 st.info(f"🔄 Executando Auto Liquidação via API Pipefy...")
                                 st.info(f"📅 Data de pagamento: {data_str}")
-                                resultado = module.main()
-                                arquivo_saida = f"auto_liquidacao_{data_str}.xlsx"
+                                
+                                # Passar data e pasta de saída para o módulo
+                                data_formatada = data_pagamento_api.strftime("%d/%m/%Y")
+                                pasta_trabalho = os.getcwd()
+                                resultado = module.main(data_pagamento=data_formatada, pasta_saida=pasta_trabalho)
+                                
+                                # Procurar arquivo gerado mais recentemente
+                                arquivos_gerados = [f for f in os.listdir(pasta_trabalho) if f.startswith('liquidacao_') and f.endswith('.xlsx')]
+                                if arquivos_gerados:
+                                    arquivo_saida = max(arquivos_gerados, key=lambda x: os.path.getmtime(os.path.join(pasta_trabalho, x)))
+                                    arquivo_saida = os.path.join(pasta_trabalho, arquivo_saida)
+                                else:
+                                    arquivo_saida = os.path.join(pasta_trabalho, f"auto_liquidacao_{data_str}.xlsx")
                             else:
                                 # Fallback: usar módulo de anexar comprovantes
                                 module_fallback, error_fb = get_module('Anexarcomprovantespipe')
