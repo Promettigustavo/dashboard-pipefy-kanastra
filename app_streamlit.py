@@ -443,9 +443,15 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             # Certificados - se tiver base64, criar arquivos temporários
             if "cert_base64" in fundo and "key_base64" in fundo:
                 # Os certificados no secrets.toml devem estar em formato PEM completo (texto)
-                # Não precisamos decodificar, apenas salvar como estão
                 cert_pem = fundo["cert_base64"]
                 key_pem = fundo["key_base64"]
+                
+                # Garantir que cada linha termine com \n (formato PEM correto)
+                # Certificados PEM devem ter quebras de linha Unix (\n)
+                if not cert_pem.endswith('\n'):
+                    cert_pem += '\n'
+                if not key_pem.endswith('\n'):
+                    key_pem += '\n'
                 
                 # Criar arquivos temporários
                 temp_dir = Path(tempfile.gettempdir()) / "santander_certs"
@@ -455,9 +461,10 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 self.key_path = str(temp_dir / f"{fundo_id}_key.pem")
                 
                 # Escrever certificados como texto (PEM)
-                with open(self.cert_path, 'w', encoding='utf-8') as f:
+                # Usar newline='\n' para forçar quebras Unix mesmo no Windows
+                with open(self.cert_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(cert_pem)
-                with open(self.key_path, 'w', encoding='utf-8') as f:
+                with open(self.key_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(key_pem)
                     
             elif "cert_path" in fundo and "key_path" in fundo:
