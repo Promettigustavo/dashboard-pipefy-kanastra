@@ -1543,11 +1543,26 @@ elif aba_selecionada == "📎 Comprovantes":
         
         # Importar lista de fundos
         try:
+            # Importar módulo credenciais_bancos
+            import sys
+            from pathlib import Path
+            
+            # Garantir que o path do módulo está no sys.path
+            current_dir = Path(__file__).parent
+            if str(current_dir) not in sys.path:
+                sys.path.insert(0, str(current_dir))
+            
             from credenciais_bancos import SANTANDER_FUNDOS
             fundos_disponiveis = sorted(list(SANTANDER_FUNDOS.keys()))
-        except Exception:
+            
+            if len(fundos_disponiveis) == 0:
+                st.warning("⚠️ Lista de fundos Santander vazia")
+        except ImportError as e:
             fundos_disponiveis = []
-            st.warning("⚠️ Não foi possível carregar lista de fundos Santander")
+            st.error(f"❌ Erro ao importar credenciais_bancos: {str(e)}")
+        except Exception as e:
+            fundos_disponiveis = []
+            st.error(f"❌ Erro ao carregar fundos: {str(e)}")
         
         # Campo de busca/filtro
         filtro_fundo = st.text_input(
