@@ -502,6 +502,10 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             else:
                 raise Exception(f"Erro ao obter token: {response.status_code} - {response.text}")
         
+        def obter_token_acesso(self):
+            """Alias para obter_token() - compatibilidade com SantanderAuth original"""
+            return self.obter_token()
+        
         def _is_token_valid(self):
             """Verifica se o token atual ainda é válido"""
             from datetime import datetime
