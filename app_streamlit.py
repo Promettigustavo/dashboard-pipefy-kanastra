@@ -2125,40 +2125,41 @@ elif aba_selecionada == "📎 Comprovantes":
                             for fundo, erro in erros_fundos:
                                 st.write(f"• **{fundo}**: {erro}")
                     
-                    # Sucesso
-                    if comprovantes_baixados > 0:
-                        st.success(f"✅ {comprovantes_baixados} PDF(s) salvo(s) em: `{pasta_destino}`")
+                    # Criar ZIP com todos os comprovantes disponíveis na pasta
+                    st.markdown("---")
+                    st.markdown("### 📦 Download dos Comprovantes")
+                    
+                    try:
+                        import zipfile
+                        from pathlib import Path
+                        from datetime import datetime
                         
-                        # Criar ZIP com todos os comprovantes
-                        st.markdown("---")
-                        st.markdown("### 📦 Download dos Comprovantes")
+                        # Verificar quantos PDFs existem na pasta
+                        base_path = Path(pasta_destino)
+                        pdfs_encontrados = list(base_path.rglob("*.pdf"))
                         
-                        try:
-                            import zipfile
-                            from pathlib import Path
-                            from datetime import datetime
+                        if len(pdfs_encontrados) == 0:
+                            st.info("ℹ️ Nenhum comprovante disponível para download")
+                        else:
+                            st.info(f"📄 {len(pdfs_encontrados)} arquivo(s) encontrado(s) para download")
                             
                             # Nome do arquivo ZIP
                             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                             zip_filename = f"comprovantes_{data_busca_str.replace('-', '')}_{timestamp}.zip"
-                            zip_path = Path(pasta_destino) / zip_filename
+                            zip_path = base_path / zip_filename
                             
-                            st.write(f"📦 Criando arquivo ZIP: `{zip_filename}`")
-                            
-                            # Criar ZIP mantendo estrutura de pastas
-                            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                                base_path = Path(pasta_destino)
+                            with st.spinner("📦 Criando arquivo ZIP..."):
+                                # Criar ZIP mantendo estrutura de pastas
+                                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                                    # Adicionar todos os arquivos PDF mantendo estrutura
+                                    for pdf_file in pdfs_encontrados:
+                                        # Caminho relativo para manter estrutura de pastas
+                                        arcname = pdf_file.relative_to(base_path)
+                                        zipf.write(pdf_file, arcname)
                                 
-                                # Adicionar todos os arquivos PDF mantendo estrutura
-                                for pdf_file in base_path.rglob("*.pdf"):
-                                    # Caminho relativo para manter estrutura de pastas
-                                    arcname = pdf_file.relative_to(base_path)
-                                    zipf.write(pdf_file, arcname)
-                                    st.write(f"  ✅ Adicionado: {arcname}")
-                            
-                            # Ler o arquivo ZIP para download
-                            with open(zip_path, 'rb') as f:
-                                zip_bytes = f.read()
+                                # Ler o arquivo ZIP para download
+                                with open(zip_path, 'rb') as f:
+                                    zip_bytes = f.read()
                             
                             st.success(f"✅ ZIP criado com sucesso! ({len(zip_bytes) / 1024:.1f} KB)")
                             
@@ -2168,13 +2169,20 @@ elif aba_selecionada == "📎 Comprovantes":
                                 data=zip_bytes,
                                 file_name=zip_filename,
                                 mime="application/zip",
-                                use_container_width=True
+                                use_container_width=True,
+                                type="primary"
                             )
                             
-                        except Exception as e_zip:
-                            st.error(f"❌ Erro ao criar ZIP: {str(e_zip)}")
-                            with st.expander("🔍 Detalhes do erro"):
-                                st.code(traceback.format_exc())
+                            # Mostrar estrutura do ZIP
+                            with st.expander("📋 Arquivos incluídos no ZIP", expanded=False):
+                                for pdf_file in pdfs_encontrados:
+                                    arcname = pdf_file.relative_to(base_path)
+                                    st.write(f"  ✅ {arcname}")
+                        
+                    except Exception as e_zip:
+                        st.error(f"❌ Erro ao criar ZIP: {str(e_zip)}")
+                        with st.expander("🔍 Detalhes do erro"):
+                            st.code(traceback.format_exc())
                 
             except Exception as e:
                 st.error(f"❌ Erro geral durante busca: {str(e)}")
