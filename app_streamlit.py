@@ -2232,14 +2232,40 @@ elif aba_selecionada == "📎 Comprovantes":
                     with status_container:
                         st.markdown(f"#### 💰 Pipe Liquidação [{pipe_atual}/{pipes_total}]")
                     
+                    st.write("🔍 DEBUG: Tentando carregar módulo Anexarcomprovantespipe...")
                     log_placeholder.info(f"⏳ Carregando módulo Anexarcomprovantespipe...")
                     progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.3)
                     
                     module, error = get_module('Anexarcomprovantespipe')
+                    st.write(f"🔍 DEBUG: Módulo carregado? {module is not None}")
+                    if error:
+                        st.write(f"🔍 DEBUG: Erro ao carregar: {error}")
+                    
                     if not module:
                         st.error(f"❌ Pipe Liquidação: Módulo não disponível - {error}")
                         st.info("💡 O arquivo `Anexarcomprovantespipe.py` precisa estar no repositório")
                     else:
+                        st.write("🔍 DEBUG: Módulo carregado com sucesso")
+                        st.write(f"🔍 DEBUG: hasattr processar_todos_cards? {hasattr(module, 'processar_todos_cards')}")
+                        
+                        # Verificar inicialização dos clientes Santander
+                        if hasattr(module, 'santander_clients'):
+                            st.write(f"🔍 DEBUG: santander_clients existe")
+                            st.write(f"🔍 DEBUG: Quantidade de clientes: {len(module.santander_clients)}")
+                            st.write(f"🔍 DEBUG: Fundos: {list(module.santander_clients.keys())[:5]}")
+                        else:
+                            st.write("🔍 DEBUG: santander_clients NÃO existe")
+                        
+                        # Verificar função de inicialização
+                        if hasattr(module, 'inicializar_clientes_santander'):
+                            st.write("🔍 DEBUG: Função inicializar_clientes_santander encontrada")
+                            st.write("🔍 DEBUG: Tentando re-inicializar clientes...")
+                            try:
+                                module.inicializar_clientes_santander()
+                                st.write(f"🔍 DEBUG: Após re-init: {len(module.santander_clients)} clientes")
+                            except Exception as e_init:
+                                st.error(f"🔍 DEBUG: Erro ao inicializar: {e_init}")
+                        
                         log_placeholder.info(f"⏳ Buscando cards na fase 'Aguardando Comprovante'...")
                         progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.5)
                         
@@ -2250,8 +2276,19 @@ elif aba_selecionada == "📎 Comprovantes":
                                 st.caption("💡 O módulo está buscando comprovantes na API Santander e fazendo matching com os cards do Pipefy. Aguarde...")
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
+                                st.write("🔍 DEBUG: Chamando processar_todos_cards...")
                                 # Processar
-                                resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                try:
+                                    resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                    st.write(f"🔍 DEBUG: Retornou resultados: {type(resultados)}")
+                                    if resultados:
+                                        st.write(f"🔍 DEBUG: Quantidade de resultados: {len(resultados)}")
+                                except Exception as e_proc:
+                                    st.error(f"🔍 DEBUG: Erro ao processar: {e_proc}")
+                                    import traceback
+                                    st.code(traceback.format_exc())
+                                    resultados = None
+                                
                                 progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:
