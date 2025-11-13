@@ -432,6 +432,12 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     # Criar objeto de autenticação
     class SantanderAuthFromSecrets:
         def __init__(self):
+            print(f"DEBUG SantanderAuthFromSecrets: Inicializando para fundo {fundo_id}")
+            print(f"DEBUG: cert_path_global = {cert_path_global}")
+            print(f"DEBUG: key_path_global = {key_path_global}")
+            print(f"DEBUG: 'cert_path' in fundo = {'cert_path' in fundo}")
+            print(f"DEBUG: 'cert_base64' in fundo = {'cert_base64' in fundo}")
+            
             self.fundo_id = fundo_id
             self.fundo_nome = fundo.get("nome", "")
             self.fundo_cnpj = fundo.get("cnpj", "")
@@ -455,6 +461,7 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
             
             # Opção 1 (PRIORIDADE): Certificados compartilhados globais no repositório
             if cert_path_global and key_path_global:
+                print(f"DEBUG: Usando OPÇÃO 1 - Certificados globais do repositório")
                 self.cert_path = cert_path_global
                 self.key_path = key_path_global
                 
@@ -464,6 +471,11 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 if not Path(self.key_path).is_absolute():
                     self.key_path = str(Path(__file__).parent / self.key_path)
                 
+                print(f"DEBUG: cert_path resolvido = {self.cert_path}")
+                print(f"DEBUG: key_path resolvido = {self.key_path}")
+                print(f"DEBUG: cert_path existe = {Path(self.cert_path).exists()}")
+                print(f"DEBUG: key_path existe = {Path(self.key_path).exists()}")
+                
                 # Validar que os arquivos existem
                 if not Path(self.cert_path).exists():
                     raise FileNotFoundError(f"Certificado não encontrado: {self.cert_path}")
@@ -472,6 +484,7 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                     
             # Opção 2: cert_path e key_path específicos do fundo (modo local)
             elif "cert_path" in fundo and "key_path" in fundo:
+                print(f"DEBUG: Usando OPÇÃO 2 - Certificados específicos do fundo")
                 self.cert_path = fundo["cert_path"]
                 self.key_path = fundo["key_path"]
                 
@@ -483,8 +496,13 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                     
             # Opção 3: Conteúdo PEM em base64 no secrets (fallback)
             elif "cert_base64" in fundo and "key_base64" in fundo:
+                print(f"DEBUG: Usando OPÇÃO 3 - Certificados em base64 (criando arquivos temporários)")
                 cert_pem = fundo["cert_base64"]
                 key_pem = fundo["key_base64"]
+                
+                print(f"DEBUG: Tamanho cert_pem = {len(cert_pem)} caracteres")
+                print(f"DEBUG: Tamanho key_pem = {len(key_pem)} caracteres")
+                print(f"DEBUG: cert_pem começa com: {cert_pem[:50]}")
                 
                 # Garantir que cada linha termine com \n (formato PEM correto)
                 if not cert_pem.endswith('\n'):
@@ -496,14 +514,30 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 temp_dir = Path(tempfile.gettempdir()) / "santander_certs"
                 temp_dir.mkdir(exist_ok=True)
                 
+                print(f"DEBUG: Diretório temporário = {temp_dir}")
+                
                 self.cert_path = str(temp_dir / f"{fundo_id}_cert.pem")
                 self.key_path = str(temp_dir / f"{fundo_id}_key.pem")
                 
                 # Escrever certificados como texto (PEM)
+                print(f"DEBUG: Salvando certificado em {self.cert_path}")
+                print(f"DEBUG: Salvando chave em {self.key_path}")
+                
                 with open(self.cert_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(cert_pem)
+                
                 with open(self.key_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(key_pem)
+                
+                # Validar que foram criados
+                print(f"DEBUG: Certificado criado = {Path(self.cert_path).exists()}")
+                print(f"DEBUG: Chave criada = {Path(self.key_path).exists()}")
+                
+                # Validar formato PEM
+                with open(self.cert_path, 'r') as f:
+                    cert_content = f.read()
+                    print(f"DEBUG: Primeiro linha do cert salvo: {cert_content.split(chr(10))[0]}")
+                    
             else:
                 raise ValueError(f"Certificados não encontrados para fundo {fundo_id}. Configure cert_path/key_path ou cert_base64/key_base64")
         
