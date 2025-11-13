@@ -1,0 +1,114 @@
+# Credenciais e Secrets - NUNCA COMMITAR
+credenciais_bancos.py
+kanastra-live-*.json
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+config_streamlit.py
+
+# Tokens e variáveis de ambiente
+.env
+.env.local
+config/secrets.json
+.streamlit/secrets.toml
+
+# Certificados
+Certificados/
+certificados/
+
+# Arquivos Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Ambientes virtuais
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Outputs e dados gerados
+Comprovantes/
+Extratos/
+extratos/
+output.txt
+*.csv
+*.xlsx
+*.xls
+*.json
+!fases_pipes.json
+!ExtratosAutomaticos.xlsx
+
+# Logs
+*.log
+
+# Backups e debug
+backup*.py
+*_old.py
+debug_*.py
+debug_*.json
+test_*.py
+testar_*.py
+teste_*.py
+cards_*.json
+comprovantes_*.json
+tabela_*.csv
+
+# Pastas de versões antigas
+Versões/
+Pipe liquidação/
+Taxas Arbi/
+config/
+
+# Temporários Windows
+Thumbs.db
+Desktop.ini
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

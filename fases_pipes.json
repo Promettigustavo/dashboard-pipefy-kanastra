@@ -1,0 +1,107 @@
+{
+  "pipe_liquidacao": {
+    "id": "303418384",
+    "phases": [
+      {
+        "id": "320933291",
+        "name": "Triagem",
+        "cards_count": 0
+      },
+      {
+        "id": "338171684",
+        "name": "TAXA CVM",
+        "cards_count": 0
+      },
+      {
+        "id": "338549707",
+        "name": "TAXA CVM LIMINE",
+        "cards_count": 41
+      },
+      {
+        "id": "320933292",
+        "name": "Em Análise",
+        "cards_count": 3
+      },
+      {
+        "id": "326914583",
+        "name": "2a Aprovação [Liquidação]",
+        "cards_count": -1
+      },
+      {
+        "id": "325983455",
+        "name": "Aguardando comprovante",
+        "cards_count": 33
+      },
+      {
+        "id": "320933293",
+        "name": "Retorno",
+        "cards_count": 80
+      },
+      {
+        "id": "321352632",
+        "name": "Solicitação Paga",
+        "cards_count": 109
+      },
+      {
+        "id": "320933304",
+        "name": "Cancelado",
+        "cards_count": 136
+      },
+      {
+        "id": "327310320",
+        "name": "Concluído",
+        "cards_count": 6727
+      }
+    ]
+  },
+  "pipe_taxas": {
+    "id": "303667924",
+    "phases": [
+      {
+        "id": "322385073",
+        "name": "Triagem",
+        "cards_count": 23
+      },
+      {
+        "id": "322385074",
+        "name": "Preenchimento Automático",
+        "cards_count": 2
+      },
+      {
+        "id": "327082142",
+        "name": "Segunda Validação",
+        "cards_count": 0
+      },
+      {
+        "id": "322618265",
+        "name": "Realizar Pagamento",
+        "cards_count": 88
+      },
+      {
+        "id": "324052206",
+        "name": "Segunda Aprovação",
+        "cards_count": 1
+      },
+      {
+        "id": "322673487",
+        "name": "Aguardando Comprovante",
+        "cards_count": 177
+      },
+      {
+        "id": "322618269",
+        "name": "Solicitação Paga",
+        "cards_count": 30
+      },
+      {
+        "id": "322979919",
+        "name": "Pagamentos não realizados",
+        "cards_count": 36
+      },
+      {
+        "id": "334699835",
+        "name": "Lixeira",
+        "cards_count": 3387
+      }
+    ]
+  }
+}
