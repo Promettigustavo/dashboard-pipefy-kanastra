@@ -1880,11 +1880,15 @@ elif aba_selecionada == "📎 Comprovantes":
                         progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.5)
                         
                         if hasattr(module, 'processar_todos_cards'):
-                            log_placeholder.info(f"⏳ Processando matching e anexando comprovantes...")
-                            progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
-                            
-                            resultados = module.processar_todos_cards(data_busca=data_busca_str)
-                            progress_bar.progress(pipe_atual / (pipes_total + 1))
+                            # Avisar que pode demorar
+                            with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
+                                log_placeholder.info(f"🔄 Executando matching e anexando comprovantes...")
+                                st.caption("💡 O módulo está buscando comprovantes na API Santander e fazendo matching com os cards do Pipefy. Aguarde...")
+                                progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
+                                
+                                # Processar
+                                resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:
                                 for r in resultados:
@@ -1919,11 +1923,15 @@ elif aba_selecionada == "📎 Comprovantes":
                         progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.5)
                         
                         if hasattr(module, 'processar_todos_cards'):
-                            log_placeholder.info(f"⏳ Processando matching e anexando comprovantes...")
-                            progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
-                            
-                            resultados = module.processar_todos_cards(data_busca=data_busca_str)
-                            progress_bar.progress(pipe_atual / (pipes_total + 1))
+                            # Avisar que pode demorar
+                            with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
+                                log_placeholder.info(f"🔄 Executando matching e anexando comprovantes...")
+                                st.caption("💡 O módulo está buscando comprovantes na API Santander e fazendo matching com os cards do Pipefy. Aguarde...")
+                                progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
+                                
+                                # Processar
+                                resultados = module.processar_todos_cards(data_busca=data_busca_str)
+                                progress_bar.progress(pipe_atual / (pipes_total + 1))
                             
                             if resultados:
                                 for r in resultados:
