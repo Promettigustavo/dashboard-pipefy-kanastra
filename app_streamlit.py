@@ -1670,10 +1670,123 @@ elif aba_selecionada == "📎 Comprovantes":
             key="btn_buscar_santander",
             disabled=len(fundos_selecionados) == 0
         ):
-            st.warning("⚠️ Funcionalidade de busca via API Santander em desenvolvimento")
-            st.info(f"📅 Data: {data_busca_santander.strftime('%Y-%m-%d')}")
-            st.info(f"💼 Fundos: {len(fundos_selecionados)}")
-            st.info(f"📁 Destino: {pasta_destino}")
+            st.markdown("---")
+            st.markdown("### 🔍 Busca de Comprovantes")
+            
+            # Container para logs
+            log_placeholder = st.empty()
+            progress_bar = st.progress(0)
+            
+            # Resultados
+            comprovantes_encontrados = 0
+            comprovantes_baixados = 0
+            erros_fundos = []
+            
+            try:
+                data_busca_str = data_busca_santander.strftime("%Y-%m-%d")
+                total_fundos = len(fundos_selecionados)
+                
+                st.info(f"📅 Buscando comprovantes de **{data_busca_str}** em **{total_fundos}** fundo(s)")
+                st.info(f"📁 Destino: `{pasta_destino}`")
+                
+                # Verificar se módulo de busca existe
+                module_buscar, error = get_module('buscar_comprovantes_santander')
+                
+                if not module_buscar:
+                    st.error(f"❌ Módulo de busca não disponível: {error}")
+                    st.info("💡 Certifique-se de que o arquivo `buscar_comprovantes_santander.py` está no projeto")
+                else:
+                    # Processar cada fundo
+                    for idx, fundo_id in enumerate(fundos_selecionados, 1):
+                        progress_bar.progress(idx / (total_fundos + 1))
+                        log_placeholder.info(f"⏳ [{idx}/{total_fundos}] Processando fundo: {fundo_id}...")
+                        
+                        try:
+                            # Criar cliente Santander para o fundo
+                            if hasattr(module_buscar, 'SantanderComprovantes'):
+                                # Importar SantanderAuth
+                                try:
+                                    from credenciais_bancos import SantanderAuth
+                                    
+                                    # Criar autenticação
+                                    auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
+                                    cliente = module_buscar.SantanderComprovantes(auth)
+                                    
+                                    # Buscar comprovantes
+                                    comprovantes = cliente.listar_comprovantes(
+                                        data_inicio=data_busca_str,
+                                        data_fim=data_busca_str
+                                    )
+                                    
+                                    if comprovantes:
+                                        qtd = len(comprovantes.get('receipts', []))
+                                        comprovantes_encontrados += qtd
+                                        
+                                        # Baixar cada comprovante
+                                        for comp in comprovantes.get('receipts', []):
+                                            try:
+                                                pdf_path = cliente.baixar_comprovante(
+                                                    receipt_id=comp['receipt_id'],
+                                                    pasta_destino=pasta_destino
+                                                )
+                                                if pdf_path:
+                                                    comprovantes_baixados += 1
+                                            except Exception as e_download:
+                                                st.warning(f"⚠️ {fundo_id}: Erro ao baixar comprovante {comp.get('receipt_id')}: {str(e_download)}")
+                                        
+                                        log_placeholder.success(f"✅ {fundo_id}: {qtd} comprovante(s) encontrado(s)")
+                                    else:
+                                        log_placeholder.info(f"ℹ️ {fundo_id}: Nenhum comprovante encontrado")
+                                
+                                except ImportError:
+                                    # Tentar usar secrets
+                                    if "santander_fundos" in st.secrets and fundo_id in st.secrets["santander_fundos"]:
+                                        st.warning(f"⚠️ {fundo_id}: Credenciais via secrets ainda não implementado para busca")
+                                        erros_fundos.append((fundo_id, "Busca via secrets não implementada"))
+                                    else:
+                                        erros_fundos.append((fundo_id, "Credenciais não encontradas"))
+                                        log_placeholder.warning(f"⚠️ {fundo_id}: Credenciais não encontradas")
+                                
+                            else:
+                                st.error("❌ Classe SantanderComprovantes não encontrada no módulo")
+                                break
+                        
+                        except Exception as e_fundo:
+                            erro_msg = str(e_fundo)
+                            erros_fundos.append((fundo_id, erro_msg))
+                            log_placeholder.error(f"❌ {fundo_id}: {erro_msg}")
+                    
+                    # Finalizar
+                    progress_bar.progress(1.0)
+                    log_placeholder.success("✅ Busca concluída!")
+                    
+                    # RESUMO
+                    st.markdown("---")
+                    st.markdown("### 📊 Resumo da Busca")
+                    
+                    col_r1, col_r2, col_r3 = st.columns(3)
+                    with col_r1:
+                        st.metric("Fundos Processados", total_fundos)
+                    with col_r2:
+                        st.metric("Comprovantes Encontrados", comprovantes_encontrados)
+                    with col_r3:
+                        st.metric("PDFs Baixados", comprovantes_baixados)
+                    
+                    # Erros
+                    if erros_fundos:
+                        st.markdown("---")
+                        with st.expander(f"⚠️ Erros ({len(erros_fundos)} fundo(s))", expanded=True):
+                            for fundo, erro in erros_fundos:
+                                st.write(f"• **{fundo}**: {erro}")
+                    
+                    # Sucesso
+                    if comprovantes_baixados > 0:
+                        st.success(f"✅ {comprovantes_baixados} PDF(s) salvo(s) em: `{pasta_destino}`")
+                
+            except Exception as e:
+                st.error(f"❌ Erro geral durante busca: {str(e)}")
+                with st.expander("🔍 Detalhes do erro"):
+                    st.code(traceback.format_exc())
     
     # ===== COLUNA DIREITA: ANEXAR NO PIPEFY =====
     with col_anexar:
