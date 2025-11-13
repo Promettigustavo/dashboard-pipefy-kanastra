@@ -440,14 +440,30 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 }
             }
             
-            # Certificados - se tiver base64, criar arquivos temporários
-            if "cert_base64" in fundo and "key_base64" in fundo:
-                # Os certificados no secrets.toml devem estar em formato PEM completo (texto)
+            # Certificados - múltiplas opções de configuração
+            # Opção 1: cert_path e key_path específicos do fundo (modo local)
+            if "cert_path" in fundo and "key_path" in fundo:
+                self.cert_path = fundo["cert_path"]
+                self.key_path = fundo["key_path"]
+                
+            # Opção 2: Certificados compartilhados no repositório (todos os fundos usam os mesmos)
+            elif "cert_path" in fundos or "key_path" in fundos:
+                # Certificados globais definidos fora das seções de fundos
+                self.cert_path = fundos.get("cert_path", "")
+                self.key_path = fundos.get("key_path", "")
+                
+                # Se for path relativo, resolver a partir do diretório do projeto
+                if self.cert_path and not Path(self.cert_path).is_absolute():
+                    self.cert_path = str(Path(__file__).parent / self.cert_path)
+                if self.key_path and not Path(self.key_path).is_absolute():
+                    self.key_path = str(Path(__file__).parent / self.key_path)
+                    
+            # Opção 3: Conteúdo PEM em base64 no secrets (cloud)
+            elif "cert_base64" in fundo and "key_base64" in fundo:
                 cert_pem = fundo["cert_base64"]
                 key_pem = fundo["key_base64"]
                 
                 # Garantir que cada linha termine com \n (formato PEM correto)
-                # Certificados PEM devem ter quebras de linha Unix (\n)
                 if not cert_pem.endswith('\n'):
                     cert_pem += '\n'
                 if not key_pem.endswith('\n'):
@@ -461,18 +477,12 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
                 self.key_path = str(temp_dir / f"{fundo_id}_key.pem")
                 
                 # Escrever certificados como texto (PEM)
-                # Usar newline='\n' para forçar quebras Unix mesmo no Windows
                 with open(self.cert_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(cert_pem)
                 with open(self.key_path, 'w', encoding='utf-8', newline='\n') as f:
                     f.write(key_pem)
-                    
-            elif "cert_path" in fundo and "key_path" in fundo:
-                # Usar paths diretos (modo local)
-                self.cert_path = fundo["cert_path"]
-                self.key_path = fundo["key_path"]
             else:
-                raise ValueError(f"Certificados não encontrados para fundo {fundo_id}")
+                raise ValueError(f"Certificados não encontrados para fundo {fundo_id}. Configure cert_path/key_path ou cert_base64/key_base64")
         
         def obter_token(self):
             """Obtém token de autenticação da API Santander"""

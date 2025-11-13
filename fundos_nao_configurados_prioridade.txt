@@ -1,0 +1,369 @@
+================================================================================
+FUNDOS NÃO CONFIGURADOS - LISTA POR PRIORIDADE
+Pipe: 2 - Pagamento de Taxas
+Fase: Aguardando Comprovante (177 cards)
+Data: 06/11/2025
+================================================================================
+
+TOTAL: 81 fundos não configurados (81.8% dos fundos)
+Cobertura atual: 18 fundos configurados (18.2%)
+
+================================================================================
+🔴 PRIORIDADE CRÍTICA - 4 CARDS AGUARDANDO
+================================================================================
+
+1. OKLAHOMA FIDC
+   CNPJ: 57.976.577/0001-50
+   Cards aguardando: 4
+
+2. COINVEST FIDC
+   CNPJ: 39.851.553/0001-93
+   Cards aguardando: 4
+
+3. D'ORO CAPITAL FIDC
+   CNPJ: 51.731.270/0001-03
+   Cards aguardando: 4
+
+
+================================================================================
+🟠 PRIORIDADE ALTA - 3 CARDS AGUARDANDO
+================================================================================
+
+4. VIRTUS FIDC
+   CNPJ: 60.101.506/0001-19
+   Cards aguardando: 3
+
+5. ONCRED FIDC
+   CNPJ: 60.368.384/0001-21
+   Cards aguardando: 3
+
+6. YUNUS FIDC
+   CNPJ: 29.330.482/0001-20
+   Cards aguardando: 3
+
+
+================================================================================
+🟡 PRIORIDADE MÉDIA - 2 CARDS AGUARDANDO
+================================================================================
+
+7. AMG FIP
+   CNPJ: 57.692.612/0001-00
+   Cards aguardando: 2
+
+8. CONSORCIEI FIC FIDC
+   CNPJ: 60.115.778/0001-78
+   Cards aguardando: 2
+
+9. BLIPS FIDC
+   CNPJ: 58.482.694/0001-20
+   Cards aguardando: 2
+
+10. BAY FIDC
+    CNPJ: 60.252.007/0001-22
+    Cards aguardando: 2
+
+11. HCAM PETRO FIDC
+    CNPJ: NÃO ENCONTRADO
+    Cards aguardando: 2
+
+12. LAVOURA FIAGRO
+    CNPJ: 61.007.751/0001-24
+    Cards aguardando: 2
+
+13. NX BOATS
+    CNPJ: 61.430.639/0001-00
+    Cards aguardando: 2
+
+14. GOLDEN TREE FIDC
+    CNPJ: 29.249.995/0001-00
+    Cards aguardando: 2
+
+15. LOOMY FIDC
+    CNPJ: 61.062.538/0001-15
+    Cards aguardando: 2
+
+16. MARCA FIDC
+    CNPJ: 49.466.992/0001-36
+    Cards aguardando: 2
+
+17. SIM FIDC
+    CNPJ: 60.681.487/0001-47
+    Cards aguardando: 2
+
+18. COINVEST FIC FIDC
+    CNPJ: 39.851.520/0001-43
+    Cards aguardando: 2
+
+19. SYMA FUNDO DE INVESTIMENTO FINANCEIRO MULTIMERCADO
+    CNPJ: 60.232.226/0001-40
+    Cards aguardando: 2
+
+20. ORIZ JUS CPS
+    CNPJ: 61.543.748/0001-25
+    Cards aguardando: 2
+
+21. FIC FIDC ALTINVEST MASTER
+    CNPJ: 58.888.944/0001-27
+    Cards aguardando: 2
+
+22. IGAPORÃ FIC FIM
+    CNPJ: 51.861.413/0001-00
+    Cards aguardando: 2
+
+23. MACAUBAS FIP
+    CNPJ: 56.960.033/0001-38
+    Cards aguardando: 2
+
+24. ANTARES FIDC
+    CNPJ: 60.078.440/0001-93
+    Cards aguardando: 2
+
+25. AV BANCO FIDC
+    CNPJ: 51.313.788/0001-27
+    Cards aguardando: 2
+
+26. GUAJUVIRA FIDC
+    CNPJ: 44.479.362/0001-82
+    Cards aguardando: 2
+
+27. PRIMATO FIDC
+    CNPJ: 55.074.368/0001-96
+    Cards aguardando: 2
+
+28. MOBILITAS FIDC
+    CNPJ: 57.270.666/0001-87
+    Cards aguardando: 2
+
+29. AMOVERI FIDC
+    CNPJ: 48.213.067/0001-30
+    Cards aguardando: 2
+
+30. HURST FIDC
+    CNPJ: 59.291.327/0001-02
+    Cards aguardando: 2
+
+31. PJBANK FIDC
+    CNPJ: 56.190.298/0001-02
+    Cards aguardando: 2
+
+32. ALT LEGAL CLAIMS FIDC (JUSTIX)
+    CNPJ: 59.111.770/0001-54
+    Cards aguardando: 2
+
+33. ALPS BANK FIDC MULTISSETORIAL
+    CNPJ: 51.410.150/0001-04
+    Cards aguardando: 2
+
+34. CUB FIDC
+    CNPJ: 57.258.316/0001-03
+    Cards aguardando: 2
+
+35. SDA FIDC
+    CNPJ: 58.312.065/0001-52
+    Cards aguardando: 2
+
+36. CEDRO PROPERTIES FII
+    CNPJ: 20.118.507/0001-51
+    Cards aguardando: 2
+
+37. SIRIUS FIDC
+    CNPJ: 58.321.970/0001-79
+    Cards aguardando: 2
+
+38. MULTIBANK FIDC
+    CNPJ: 29.494.000/0001-77
+    Cards aguardando: 2
+
+39. RECOVERY LEX FIDC
+    CNPJ: 50.768.516/0001-59
+    Cards aguardando: 2
+
+40. JUSINVEST FIDC
+    CNPJ: 38.328.747/0001-46
+    Cards aguardando: 2
+
+41. CITRINO FIDC
+    CNPJ: 52.649.689/0001-83
+    Cards aguardando: 2
+
+42. AID BANK FIDC MULTISSETORIAL
+    CNPJ: 51.253.601/0001-47
+    Cards aguardando: 2
+
+43. DC1 FIDC
+    CNPJ: 58.242.641/0001-32
+    Cards aguardando: 2
+
+44. CPV FIDC
+    CNPJ: 30.177.946/0001-99
+    Cards aguardando: 2
+
+45. HEALTH FIDC
+    CNPJ: 51.294.885/0001-10
+    Cards aguardando: 2
+
+46. WCAPITAL FIDC
+    CNPJ: 49.460.350/0001-20
+    Cards aguardando: 2
+
+47. BOLSA DE CRÉDITOS FIDC NP
+    CNPJ: 50.692.376/0001-82
+    Cards aguardando: 2
+
+48. CREDALUGA
+    CNPJ: 54.747.911/0001-06
+    Cards aguardando: 2
+
+49. COHAB FIDC
+    CNPJ: 53.765.941/0001-82
+    Cards aguardando: 2
+
+50. FACTIA FIDC
+    CNPJ: 50.791.925/0001-76
+    Cards aguardando: 2
+
+51. URBANO FIDC
+    CNPJ: 23.773.276/0001-08
+    Cards aguardando: 2
+
+52. FATURE FIDC
+    CNPJ: 43.122.353/0001-77
+    Cards aguardando: 2
+
+53. LIVEN FIDC
+    CNPJ: 60.974.918/0001-63
+    Cards aguardando: 2
+
+
+================================================================================
+🟢 PRIORIDADE BAIXA - 1 CARD AGUARDANDO
+================================================================================
+
+54. CHILLI BEANS FIDC - CB
+    CNPJ: 43.023.990/0001-96
+    Cards aguardando: 1
+
+55. FACIO FIDC
+    CNPJ: 51.119.641/0001-09
+    Cards aguardando: 1
+
+56. EOS FIDC WH (TERCON)
+    CNPJ: 48.169.685/0001-20
+    Cards aguardando: 1
+
+57. SETTORE FIDC
+    CNPJ: 20.256.882/0001-68
+    Cards aguardando: 1
+
+58. ÂNGULO FIP
+    CNPJ: 32.969.381/0001-08
+    Cards aguardando: 1
+
+59. AGROCANA FIDC
+    CNPJ: 57.053.395/0001-08
+    Cards aguardando: 1
+
+60. ARCO CAPITAL FIP
+    CNPJ: 43.619.281/0001-78
+    Cards aguardando: 1
+
+61. SEVEN SUMMITS FIP
+    CNPJ: 43.985.679/0001-28
+    Cards aguardando: 1
+
+62. RUBI FIDC
+    CNPJ: 19.187.286/0001-94
+    Cards aguardando: 1
+
+63. FIDC MDR II HIGH GRADE RECEBIVEIS DE CREDENCIADORAS RL
+    CNPJ: 61.709.339/0001-56
+    Cards aguardando: 1
+
+64. CLM FIDC NP MULTISET (CLM CONSULTORIA)
+    CNPJ: 18.676.987/0001-24
+    Cards aguardando: 1
+
+65. CLM II FIDC MULTISSETORIAL
+    CNPJ: 60.493.763/0001-43
+    Cards aguardando: 1
+
+66. CITRINO II FIDC
+    CNPJ: 60.351.586/0001-60
+    Cards aguardando: 1
+
+67. FORCE CAPITAL FIDC
+    CNPJ: 33.304.615/0001-60
+    Cards aguardando: 1
+
+68. TRADEMASTER FIDC (COBRANÇA KANASTRA)
+    CNPJ: 54.585.643/0001-73
+    Cards aguardando: 1
+
+69. SOLFACIL VI FIDC
+    CNPJ: 57.028.406/0001-08
+    Cards aguardando: 1
+
+70. UNAVANTI
+    CNPJ: 13.327.334/0001-16
+    Cards aguardando: 1
+
+71. PRECATÓRIOS BR FIDC
+    CNPJ: 37.780.694/0001-37
+    Cards aguardando: 1
+
+72. PLETORA FIDC
+    CNPJ: 42.273.967/0001-97
+    Cards aguardando: 1
+
+73. B4 TRUST FIDC
+    CNPJ: 32.287.737/0001-23
+    Cards aguardando: 1
+
+74. ATIVA FIDC
+    CNPJ: 50.118.274/0001-58
+    Cards aguardando: 1
+
+
+================================================================================
+⚠️ FUNDOS SEM CNPJ IDENTIFICADO (VERIFICAR MANUALMENTE)
+================================================================================
+
+75. HCAM PETRO FIDC
+    CNPJ: NÃO ENCONTRADO NO SISTEMA
+    Cards aguardando: 2
+
+
+================================================================================
+📊 RESUMO ESTATÍSTICO
+================================================================================
+
+Total de fundos não configurados: 81
+Total de cards bloqueados: 144 cards (de 177 total = 81.4%)
+
+Distribuição por prioridade:
+🔴 Crítica (4 cards):      3 fundos  =  12 cards (8.3%)
+🟠 Alta (3 cards):         3 fundos  =   9 cards (6.3%)
+🟡 Média (2 cards):       47 fundos  =  94 cards (65.3%)
+🟢 Baixa (1 card):        28 fundos  =  28 cards (19.4%)
+⚠️  Sem CNPJ:              1 fundo   =   1 card  (0.7%)
+
+RECOMENDAÇÃO:
+Comece configurando os 6 fundos de prioridade crítica e alta (3-4 cards cada).
+Isso desbloqueará 21 cards (14.6% do total bloqueado).
+
+Em seguida, configure os 47 fundos de prioridade média (2 cards cada).
+Isso desbloqueará mais 94 cards (65.3% do total bloqueado).
+
+Os 28 fundos com apenas 1 card podem ser configurados conforme demanda.
+
+================================================================================
+OBSERVAÇÕES IMPORTANTES
+================================================================================
+
+1. HCAM PETRO FIDC não possui CNPJ identificado no sistema - verificar manualmente
+2. Todos os fundos listados são do banco Santander (banco 033)
+3. CNPJs formatados para facilitar busca e configuração
+4. Prioridade baseada em quantidade de cards aguardando comprovante
+5. Total de 144 cards (81.4%) estão bloqueados aguardando configuração
+
+================================================================================

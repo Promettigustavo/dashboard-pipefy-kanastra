@@ -1,0 +1,1097 @@
+openapi: 3.0.1
+info:
+  title: Bank Account Information
+  description: >-
+    Service description: Returns the list with all types of accounts, their
+    balances and statements for Santander Accounts or other institutions
+    consented through Open Banking. ----- * Interface description: Returns the
+    list with all types of accounts, their balances and statements for Santander
+    Accounts or other institutions consented through Open Banking.
+  version: 1.0.0
+  x-santander-local-catalogation:
+    businessServiceType: OPEN
+    serviceExposureTypes:
+      - INTERNET
+servers:
+  - url: /bank_account_information/v1
+tags:
+  - name: Default Methods
+    description: Default HTTP Methods
+paths:
+  '/banks/{bank_id}/accounts':
+    get:
+      tags:
+        - Default Methods
+      summary: Consulta da Lista de Contas
+      description: Consulta da Lista de Contas
+      parameters:
+        - $ref: '#/components/parameters/BankId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListAccountDataConsultationsOk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - InternalToken: []
+  '/banks/{bank_id}/balances/{balance_id}':
+    get:
+      tags:
+        - Default Methods
+      summary: Consulta de Saldos
+      description: Consulta de Saldos
+      parameters:
+        - $ref: '#/components/parameters/BalanceId'
+        - $ref: '#/components/parameters/BankId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListBalanceDataConsultationsOk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - InternalToken: []
+  '/banks/{bank_id}/statements':
+    get:
+      tags:
+        - Default Methods
+      summary: Consulta de Extrato
+      description: Consulta de Extrato
+      parameters:
+        - $ref: '#/components/parameters/BankId'
+        - $ref: '#/components/parameters/BranchCode'
+        - $ref: '#/components/parameters/AccountNumber'
+        - $ref: '#/components/parameters/IdAccount'
+        - $ref: '#/components/parameters/InitialDate'
+        - $ref: '#/components/parameters/FinalDate'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListStatementDataConsultationsOk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - InternalToken: []
+  '/transactions/{transactionId}':
+    get:
+      tags:
+        - Big Volumes
+      summary: Transactions route
+      description: Transactions route
+      parameters:
+        - $ref: '#/components/parameters/transactionId'
+        - $ref: '#/components/parameters/_limit'
+        - $ref: '#/components/parameters/_nextPage'
+        - $ref: '#/components/parameters/InitialDate'
+        - $ref: '#/components/parameters/FinalDate'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListTransactionsSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - InternalToken: []
+  '/provisioneds/{provisionedId}':
+    get:
+      tags:
+        - Big Volumes
+      summary: Provisioneds route
+      description: Provisioneds route
+      parameters:
+        - $ref: '#/components/parameters/provisionedId'
+        - $ref: '#/components/parameters/_limit'
+        - $ref: '#/components/parameters/_nextPage'
+        - $ref: '#/components/parameters/InitialDate'
+        - $ref: '#/components/parameters/FinalDate'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListProvisionedsSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '406':
+          $ref: '#/components/responses/NotAcceptable'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      security:
+        - InternalToken: []
+components:
+  schemas:
+    BalanceIdType:
+      pattern: '^\d{4}\$'
+      type: integer
+      description: Unique discount solicitation id
+      format: <agencyCode.accountNumber> or <accountId>
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    BankIdType:
+      pattern: '^\d{4}\$'
+      type: integer
+      description: Unique discount solicitation id
+      format: <bankCode>
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    AppName:
+      minLength: 1
+      type: string
+      description: X-Appname
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    Currency:
+      maxLength: 100
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    BranchCode:
+      maxLength: 100
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    AccountNumber:
+      maxLength: 100
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    InitialDate:
+      maxLength: 10
+      minLength: 10
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    FinalDate:
+      maxLength: 10
+      minLength: 10
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    TotalRecords:
+      maxLength: 100
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    Page:
+      maxLength: 100
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    _nextPage:
+      maxLength: 99999
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    _limit:
+      maxLength: 750
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    transactionId:
+      maxLength: 999999999999999
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    provisionedId:
+      maxLength: 999999999999999
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    CustomerId:
+      maxLength: 100
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    AccountId:
+      maxLength: 100
+      minLength: 1
+      type: string
+      x-santander-security-cdo-level: confidential
+      x-santander-security-encrypt-type: normal
+    ErrorTemplate:
+      required:
+        - _details
+        - _errorCode
+        - _message
+        - _timestamp
+        - _traceId
+      type: object
+      properties:
+        _errorCode:
+          minimum: 0
+          type: integer
+          description: Error code
+          x-santander-security-cdo-level: internal
+          x-santander-security-encrypt-type: normal
+        _message:
+          maxLength: 30
+          type: string
+          description: Error message
+          x-santander-security-cdo-level: internal
+          x-santander-security-encrypt-type: normal
+        _details:
+          maxLength: 100
+          type: string
+          description: Error detail message.
+          x-santander-security-cdo-level: internal
+          x-santander-security-encrypt-type: normal
+        _timestamp:
+          type: string
+          description: Date and time when it happens
+          format: date-time
+          x-santander-security-cdo-level: internal
+          x-santander-security-encrypt-type: normal
+        _traceId:
+          type: string
+          description: >-
+            Data received in x-traceId header parameter or generated uuid, if
+            not received
+          format: uuid
+          x-santander-security-cdo-level: internal
+          x-santander-security-encrypt-type: normal
+        _errors:
+          type: array
+          description: Additional information about error
+          items:
+            required:
+              - _message
+            type: object
+            properties:
+              _code:
+                minimum: 0
+                type: integer
+                description: Specific error code
+                x-santander-security-cdo-level: internal
+                x-santander-security-encrypt-type: normal
+              _field:
+                maxLength: 50
+                type: string
+                description: Field name related with error
+                x-santander-security-cdo-level: internal
+                x-santander-security-encrypt-type: normal
+              _message:
+                maxLength: 100
+                type: string
+                description: Field name related with error
+                x-santander-security-cdo-level: internal
+                x-santander-security-encrypt-type: normal
+      description: >-
+        Error Data. You must not return sensible data here. In order to accept
+        multiple languages, request Accept-Language header parameter.
+      x-santander-dictionary-entity: ErrorTemplate
+    AccountListDataQueryResponse:
+      type: object
+      properties:
+        authorizationId:
+          type: string
+          description: authorizationId
+          example: 9326f9b2-ae57-42c4-a0d9-acc4ba434696
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        brandName:
+          type: string
+          description: brand Name
+          example: Mercado Pago
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        companyCnpj:
+          type: string
+          description: company Cnpj
+          example: '10573521000191'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        type:
+          type: string
+          description: type
+          example: CONTA_PAGAMENTO_PRE_PAGA
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        compeCode:
+          type: string
+          description: compe Code
+          example: '323'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        branchCode:
+          type: string
+          description: branch Code
+          example: '0001'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        number:
+          type: string
+          description: number
+          example: '5319340006'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        checkDigit:
+          type: string
+          description: check Digit
+          example: '9'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        accountId:
+          type: string
+          description: account Id
+          example: '184971372'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+      description: Balance Response
+      x-santander-security-cdo-level: confidential
+    BalanceDataQueryResponse:
+      type: object
+      properties:
+        availableAmount:
+          type: string
+          description: available Amount
+          example: '100.00'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        availableAmountCurrency:
+          type: string
+          description: available Amount Currency
+          example: BRL
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        blockedAmount:
+          type: string
+          description: blocked Amount
+          example: '100.00'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        blockedAmountCurrency:
+          type: string
+          description: blocked Amount Currency
+          example: BRL
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        automaticallyInvestedAmount:
+          type: string
+          description: automatically Invested Amount
+          example: '100.00'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        automaticallyInvestedAmountCurrency:
+          type: string
+          description: automatically Invested Amount Currency
+          example: BRL
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+      description: Balance Response
+      x-santander-security-cdo-level: confidential
+    StatementDataQueryResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          description: transaction Id
+          example: 1654119654b128318c0bbb905ebbb95b8c9c2f841c1a0c
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        completedAuthorisedPaymentType:
+          type: string
+          description: completed Authorised Payment Type
+          example: TRANSACAO_EFETIVADA
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        creditDebitType:
+          type: string
+          description: credit Debit Type
+          example: DEBITO
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        transactionName:
+          type: string
+          description: transaction Name
+          example: Você transferiu para...
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        type:
+          type: string
+          description: type
+          example: PIX
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        amount:
+          type: string
+          description: amount
+          example: -0.1
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        transactionCurrency:
+          type: string
+          description: transaction Currency
+          example: BRL
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        transactionDate:
+          type: string
+          description: transaction Date
+          example: '2022-08-12'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        partieCnpjCpf:
+          type: string
+          description: partie Cnpj Cpf
+          example: '11608308863'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        partiePersonType:
+          type: string
+          description: partie Person Type
+          example: PESSOA_NATURAL
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        partieCompeCode:
+          type: string
+          description: partieCompeCode
+          example: '0001'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        partieBranchCode:
+          type: string
+          description: partieBranchCode
+          example: '0001'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        partieNumber:
+          type: string
+          description: partie Number
+          example: '01015243'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        partieCheckDigit:
+          type: string
+          description: partie Check Digit
+          example: '3'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+      description: Balance Response
+      x-santander-security-cdo-level: confidential
+    SimplePageableTemplate:
+      required:
+        - _content
+        - _pageable
+      type: object
+      properties:
+        _pageable:
+          required:
+            - _moreElements
+          type: object
+          properties:
+            _moreElements:
+              type: boolean
+              description: Has more elements that were not returned.
+              x-santander-security-cdo-level: confidential
+              x-santander-security-encrypt-type: normal
+        _content:
+          maxItems: 10
+          minItems: 0
+          type: array
+          items:
+            type: object
+      description: Pageable template
+      x-santander-dictionary-entity: SimplePageableTemplate
+    AccountListDataResponse:
+      description: Summarized Balance Response
+      allOf:
+        - $ref: '#/components/schemas/SimplePageableTemplate'
+        - type: object
+          properties:
+            _content:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/AccountListDataQueryResponse'
+    StatementDataResponse:
+      description: Summarized Balance Response
+      allOf:
+        - $ref: '#/components/schemas/SimplePageableTemplate'
+        - type: object
+          properties:
+            _content:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/StatementDataQueryResponse'
+    TransactionDataResponse:
+      description: XXXXX
+      type: object
+      properties:
+        _content:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/TransactionDataQueryResponse'
+        _pageable:
+          type: object
+          properties:
+            totalRecords:
+              type: string
+              description: total objects returned
+              example: 1
+              x-santander-security-cdo-level: confidential
+              x-santander-security-encrypt-type: normal
+            paging:
+              type: string
+              description: current page hash
+              example: >-
+                00c7001000000000c30000002f00000004000000040000003030333304000000323237310c0000003030303133303233333838300300000042524c011c000000020000000400000080004dcc0800000000000000018a4227feffffff6b43ff03983a657e937987b947b63baf01000000390000000119000000140000000100000008000000af6191de99dcaebf010119000000140000000100000008000000af6191de99dcaebf010101000000044c3d502ea6a74b0b8ac543a7a9c6b1010000000000ffffffff00000000d2c0cf089a616b8904d401e4f9f1cab00004
+              x-santander-security-cdo-level: confidential
+              x-santander-security-encrypt-type: normal
+    ProvisionedDataResponse:
+      description: XXXXX
+      type: object
+      properties:
+        _content:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/ProvisionedDataQueryResponse'
+        _pageable:
+          type: object
+          properties:
+            totalRecords:
+              type: string
+              description: total objects returned
+              example: 1
+              x-santander-security-cdo-level: confidential
+              x-santander-security-encrypt-type: normal
+            paging:
+              type: string
+              description: current page hash
+              example: >-
+                00c7001000000000c30000002f00000004000000040000003030333304000000323237310c0000003030303133303233333838300300000042524c011c000000020000000400000080004dcc0800000000000000018a4227feffffff6b43ff03983a657e937987b947b63baf01000000390000000119000000140000000100000008000000af6191de99dcaebf010119000000140000000100000008000000af6191de99dcaebf010101000000044c3d502ea6a74b0b8ac543a7a9c6b1010000000000ffffffff00000000d2c0cf089a616b8904d401e4f9f1cab00004
+              x-santander-security-cdo-level: confidential
+              x-santander-security-encrypt-type: normal
+    TransactionDataQueryResponse:
+      type: object
+      properties:
+        creditDebitType:
+          type: string
+          description: credit Debit Type
+          example: DEBITO
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        transactionName:
+          type: string
+          description: transaction Name
+          example: RESGATE CONTAMAX AUTOMATICO
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        historicComplement:
+          type: string
+          description: type
+          example: ''
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        amount:
+          type: string
+          description: amount
+          example: 153759.81
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        transactionDate:
+          type: string
+          description: transaction Date
+          example: 12/07/2024
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        documentNumber:
+          type: string
+          description: partie Cnpj Cpf
+          example: '000000'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+      description: Balance Response
+      x-santander-security-cdo-level: confidential
+    ProvisionedDataQueryResponse:
+      type: object
+      properties:
+        creditDebitType:
+          type: string
+          description: credit Debit Type
+          example: DEBITO
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        transactionName:
+          type: string
+          description: transaction Name
+          example: RESGATE CONTAMAX AUTOMATICO
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        historicComplement:
+          type: string
+          description: type
+          example: ''
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        amount:
+          type: string
+          description: amount
+          example: 153759.81
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        transactionDate:
+          type: string
+          description: transaction Date
+          example: 12/07/2024
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+        documentNumber:
+          type: string
+          description: partie Cnpj Cpf
+          example: '000000'
+          x-santander-security-cdo-level: confidential
+          x-santander-security-encrypt-type: normal
+      description: Balance Response
+      x-santander-security-cdo-level: confidential
+  responses:
+    NoContent:
+      description: No Content
+    UnsupportedMediaType:
+      description: Unsupported Media Type
+    NotAcceptable:
+      description: Not Acceptable
+    Unauthorized:
+      description: Unauthorized
+    Forbidden:
+      description: Forbidden
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorTemplate'
+          examples:
+            RegistrationNumberWrongFormat:
+              summary: Registration number wrong format
+              value:
+                _errorCode: 4000
+                _message: Validation Error
+                _details: Error while validating input data.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 10
+                    _field: registrationNumber
+                    _message: 'Must follow this pattern: ^[(t|T|x|X)]\d{6}$'
+            WrongExpandAttribute:
+              summary: Wrong expand attribute
+              value:
+                _errorCode: 4000
+                _message: Validation Error
+                _details: Error while validating input data.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 11
+                    _field: _expand
+                    _message: ages attribute not found
+            WrongUserIdFormat:
+              summary: Wrong user id format
+              value:
+                _errorCode: 4000
+                _message: Validation Error
+                _details: Error while validating input data.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 12
+                    _field: user_id
+                    _message: Must have an integer value
+            WrongIdFormat:
+              summary: Wrong '_id' format
+              value:
+                _errorCode: 4000
+                _message: Validation Error
+                _details: Error while validating input data.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 12
+                    _field: _id
+                    _message: Must have an integer value
+            WrongBodyFormat:
+              summary: Wrong body format
+              value:
+                _errorCode: 4000
+                _message: Validation Error
+                _details: Error while validating input data.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 1
+                    _message: Body content must be a list
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorTemplate'
+          examples:
+            UserIdNotFound:
+              summary: User id not found
+              value:
+                _errorCode: 4040
+                _message: Not Found Error
+                _details: Resource not found.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 13
+                    _field: user_id
+                    _message: User with id 404 not found
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorTemplate'
+          examples:
+            InternalServerError:
+              summary: Internal server error
+              value:
+                _errorCode: 5000
+                _message: Internal Server Error
+                _details: >-
+                  An internal server error occurred while performing this
+                  action. Contact the Administrator.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+    UnprocessableEntity:
+      description: Unprocessable Entity
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorTemplate'
+          examples:
+            CannotCreateUnderAge:
+              summary: Cannot create under age
+              value:
+                _errorCode: 4221
+                _message: Validation Error
+                _details: Error while validating business rule.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 11
+                    _field: age
+                    _message: You cannot create an user under 18.
+            DeletionImpossible:
+              summary: Deletion impossible
+              value:
+                _errorCode: 4221
+                _message: Validation Error
+                _details: Error while validating business rule.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 12
+                    _field: id
+                    _message: It is impossible to delete root user.
+            UpdateImpossible:
+              summary: Update impossible
+              value:
+                _errorCode: 4221
+                _message: Validation Error
+                _details: Error while validating business rule.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 13
+                    _field: registrationNumber
+                    _message: You cannot change registration number.
+            UndeleteImpossible:
+              summary: Undelete impossible
+              value:
+                _errorCode: 4221
+                _message: Not Found Error
+                _details: Resource not found.
+                _timestamp: '2021-02-11T21:41:43.286Z'
+                _traceId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                _errors:
+                  - _code: 14
+                    _field: _id
+                    _message: User with id 422 not found.
+    ListAccountDataConsultationsOk:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AccountListDataResponse'
+    ListBalanceDataConsultationsOk:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BalanceDataQueryResponse'
+    ListStatementDataConsultationsOk:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/StatementDataResponse'
+    ListTransactionsSuccess:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TransactionDataResponse'
+    ListProvisionedsSuccess:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProvisionedDataResponse'
+  parameters:
+    transactionId:
+      name: transactionId
+      in: path
+      description: Agency and account with dot in the middle
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: '#/components/schemas/transactionId'
+      example: 7685.0001309453
+      x-santander-dictionary-entity: transactionId
+    provisionedId:
+      name: provisionedId
+      in: path
+      description: Agency and account with dot in the middle
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: '#/components/schemas/provisionedId'
+      example: 7685.0001309453
+      x-santander-dictionary-entity: provisionedId
+    _limit:
+      name: limit
+      in: query
+      description: Itens per page
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/_limit'
+      x-santander-dictionary-entity: _limit
+    _nextPage:
+      name: _nextPage
+      in: query
+      description: current page
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/_nextPage'
+      x-santander-dictionary-entity: _nextPage
+    AppName:
+      name: X-Appname
+      in: header
+      description: Acronym-Channel
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: '#/components/schemas/AppName'
+      x-santander-dictionary-entity: Appname
+    BankId:
+      name: bank_id
+      in: path
+      description: Código do Banco 0033 para Santander ou o CNPJ do Banco Desejado
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: '#/components/schemas/BankIdType'
+      x-santander-dictionary-entity: BankId
+    BalanceId:
+      name: balance_id
+      in: path
+      description: >-
+        Agência.Conta da Conta Santander ou AccountId da Conta de Outra
+        Instituição
+      required: true
+      style: simple
+      explode: false
+      schema:
+        $ref: '#/components/schemas/BalanceIdType'
+      example: >-
+        0001.000100200300 or
+        d1f2fa6177ff71f992066c2dd7c7ddde8578ac50874a453d42f24c092536cabc
+      x-santander-dictionary-entity: BankId
+    Currency:
+      name: currency
+      in: query
+      description: Currency
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/Currency'
+      example: BRL
+    IdAccount:
+      name: accountId
+      in: query
+      description: AccountId Para Consultas de Conta em Outra Instituição
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/AccountId'
+      example: '123456789'
+    BranchCode:
+      name: branchCode
+      in: query
+      description: Código da Agência Para Consultas de Conta Santander
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/BranchCode'
+      example: '0001'
+    CustomerId:
+      name: customerId
+      in: query
+      description: customer Identifier
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/CustomerId'
+      example: '012345678901'
+    AccountNumber:
+      name: accountNumber
+      in: query
+      description: Número da Conta e Dígito Para Consultas de Conta Santander
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/AccountNumber'
+      example: '000000025002'
+    InitialDate:
+      name: initialDate
+      in: query
+      description: Data Início da Consulta
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/InitialDate'
+      example: '2022-10-01'
+    FinalDate:
+      name: finalDate
+      in: query
+      description: Data Fim da Consulta
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/FinalDate'
+      example: '2022-10-30'
+    TotalRecords:
+      name: totalRecords
+      in: query
+      description: Número de Movimentos por Página
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/TotalRecords'
+      example: '50'
+    Page:
+      name: page
+      in: query
+      description: Página a ser consultada
+      required: true
+      style: form
+      explode: false
+      schema:
+        $ref: '#/components/schemas/Page'
+      example: '1'
+  headers:
+    Warning:
+      description: >-
+        The header advertises that exist a warning message generated during the
+        request processing and specify the message text
+      required: false
+      style: simple
+      explode: false
+      schema:
+        pattern: '^\d{3}\s\"(\-|.+)\"\s\".+\"$'
+        type: string
+        format: <warn-code> <warn-agent> <warn-message>
+      x-santander-dictionary-entity: WarningHeaderTemplate
+  securitySchemes:
+    InternalToken:
+      type: oauth2
+      description: JWT token for internal new api consumption.
+      flows:
+        clientCredentials:
+          tokenUrl: >-
+            https://sso74-custom-admin-iam-dev.azure.paas.santanderbr.dev.corp/auth/
+          refreshUrl: >-
+            https://sso74-custom-admin-iam-dev.azure.paas.santanderbr.dev.corp/auth/
+          scopes: {}
