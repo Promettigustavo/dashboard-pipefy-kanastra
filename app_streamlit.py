@@ -364,6 +364,10 @@ def get_santander_credentials():
             # Converter secrets para dict no formato esperado
             fundos_dict = {}
             for fundo_id in st.secrets["santander_fundos"].keys():
+                # Pular certificados compartilhados (cert_pem, key_pem)
+                if fundo_id in ["cert_pem", "key_pem"]:
+                    continue
+                
                 fundo_secrets = st.secrets["santander_fundos"][fundo_id]
                 
                 # Montar dict no formato do credenciais_bancos.py
