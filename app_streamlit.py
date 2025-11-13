@@ -443,6 +443,11 @@ with tab_liquidacao:
                 
                 arquivo_path = st.session_state['arquivo_saida']
                 
+                # Verificar se é caminho absoluto ou relativo
+                if not os.path.isabs(arquivo_path):
+                    # Procurar arquivo no diretório atual
+                    arquivo_path = os.path.join(os.getcwd(), arquivo_path)
+                
                 if os.path.exists(arquivo_path):
                     with open(arquivo_path, 'rb') as f:
                         st.download_button(
@@ -454,7 +459,30 @@ with tab_liquidacao:
                         )
                     st.caption(f"📄 {os.path.basename(arquivo_path)}")
                 else:
-                    st.warning("Arquivo de saída não encontrado")
+                    st.warning(f"⚠️ Arquivo não encontrado: {os.path.basename(arquivo_path)}")
+                    st.caption(f"Caminho procurado: {arquivo_path}")
+                    
+                    # Tentar encontrar arquivos .xlsx recentes no diretório
+                    try:
+                        arquivos_xlsx = sorted(
+                            [f for f in os.listdir('.') if f.endswith('.xlsx')],
+                            key=lambda x: os.path.getmtime(x),
+                            reverse=True
+                        )
+                        if arquivos_xlsx:
+                            st.info("📁 Arquivos .xlsx encontrados (mais recentes primeiro):")
+                            for arq in arquivos_xlsx[:5]:  # Mostrar até 5
+                                if os.path.exists(arq):
+                                    with open(arq, 'rb') as f:
+                                        st.download_button(
+                                            label=f"📥 {arq}",
+                                            data=f,
+                                            file_name=arq,
+                                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                            key=f"download_{arq}"
+                                        )
+                    except Exception as e:
+                        st.error(f"Erro ao listar arquivos: {e}")
             else:
                 st.info("💡 Execute a automação para gerar o arquivo")
         
