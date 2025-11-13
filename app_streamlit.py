@@ -1686,18 +1686,24 @@ elif aba_selecionada == "📎 Comprovantes":
                     st.error(f"❌ Módulo de busca não disponível: {error}")
                     st.info("💡 Certifique-se de que o arquivo `buscar_comprovantes_santander.py` está no projeto")
                 else:
-                    # Processar cada fundo
-                    for idx, fundo_id in enumerate(fundos_selecionados, 1):
-                        progress_bar.progress(idx / (total_fundos + 1))
-                        log_placeholder.info(f"⏳ [{idx}/{total_fundos}] Processando fundo: {fundo_id}...")
-                        
-                        try:
-                            # Criar cliente Santander para o fundo
-                            if hasattr(module_buscar, 'SantanderComprovantes'):
-                                # Importar SantanderAuth
-                                try:
-                                    from credenciais_bancos import SantanderAuth
-                                    
+                    # Tentar carregar SantanderAuth (local ou criar versão simplificada)
+                    try:
+                        from credenciais_bancos import SantanderAuth
+                        usa_auth_local = True
+                    except ImportError:
+                        st.warning("⚠️ Módulo credenciais_bancos não disponível (ambiente cloud). A funcionalidade de busca de comprovantes requer implementação específica.")
+                        st.info("💡 Esta funcionalidade está otimizada para execução local com certificados. Configure as credenciais localmente para usar esta feature.")
+                        usa_auth_local = False
+                    
+                    if usa_auth_local:
+                        # Processar cada fundo
+                        for idx, fundo_id in enumerate(fundos_selecionados, 1):
+                            progress_bar.progress(idx / (total_fundos + 1))
+                            log_placeholder.info(f"⏳ [{idx}/{total_fundos}] Processando fundo: {fundo_id}...")
+                            
+                            try:
+                                # Criar cliente Santander para o fundo
+                                if hasattr(module_buscar, 'SantanderComprovantes'):
                                     # Criar autenticação
                                     auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
                                     cliente = module_buscar.SantanderComprovantes(auth)
@@ -1728,23 +1734,14 @@ elif aba_selecionada == "📎 Comprovantes":
                                     else:
                                         log_placeholder.info(f"ℹ️ {fundo_id}: Nenhum comprovante encontrado")
                                 
-                                except ImportError:
-                                    # Tentar usar secrets
-                                    if "santander_fundos" in st.secrets and fundo_id in st.secrets["santander_fundos"]:
-                                        st.warning(f"⚠️ {fundo_id}: Credenciais via secrets ainda não implementado para busca")
-                                        erros_fundos.append((fundo_id, "Busca via secrets não implementada"))
-                                    else:
-                                        erros_fundos.append((fundo_id, "Credenciais não encontradas"))
-                                        log_placeholder.warning(f"⚠️ {fundo_id}: Credenciais não encontradas")
-                                
-                            else:
-                                st.error("❌ Classe SantanderComprovantes não encontrada no módulo")
-                                break
-                        
-                        except Exception as e_fundo:
-                            erro_msg = str(e_fundo)
-                            erros_fundos.append((fundo_id, erro_msg))
-                            log_placeholder.error(f"❌ {fundo_id}: {erro_msg}")
+                                else:
+                                    st.error("❌ Classe SantanderComprovantes não encontrada no módulo")
+                                    break
+                            
+                            except Exception as e_fundo:
+                                erro_msg = str(e_fundo)
+                                erros_fundos.append((fundo_id, erro_msg))
+                                log_placeholder.error(f"❌ {fundo_id}: {erro_msg}")
                     
                     # Finalizar
                     progress_bar.progress(1.0)
