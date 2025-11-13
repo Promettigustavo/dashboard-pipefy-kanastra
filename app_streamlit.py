@@ -1878,57 +1878,16 @@ elif aba_selecionada == "📎 Comprovantes":
         # Carregar credenciais usando função helper
         SANTANDER_FUNDOS, credenciais_source = get_santander_credentials()
         
-        # DEBUG VISUAL
-        with st.expander("🔍 DEBUG - Status de Carregamento", expanded=True):
-            st.write(f"**Fonte de credenciais:** `{credenciais_source}`")
-            st.write(f"**Fundos carregados:** {len(SANTANDER_FUNDOS)}")
-            if SANTANDER_FUNDOS:
-                st.write(f"**Primeiros 5 fundos:** {list(SANTANDER_FUNDOS.keys())[:5]}")
-            
-            # Verificar secrets
-            if "santander_fundos" in st.secrets:
-                all_keys = list(st.secrets["santander_fundos"].keys())
-                st.write(f"✅ **santander_fundos encontrado em secrets**")
-                st.write(f"📊 **Total de chaves em secrets:** {len(all_keys)}")
-                st.write(f"🔑 **Primeiras 10 chaves:** {all_keys[:10]}")
-                
-                # Verificar tipos
-                tipos = {}
-                for key in all_keys[:5]:
-                    val = st.secrets["santander_fundos"][key]
-                    tipos[key] = type(val).__name__
-                st.write(f"📝 **Tipos das primeiras 5 chaves:** {tipos}")
-            else:
-                st.write("❌ **santander_fundos NÃO encontrado em secrets**")
-        
         if credenciais_source == "none":
-            st.error("❌ **CREDENCIAIS NÃO CONFIGURADAS** - Fundos Santander indisponíveis")
-            st.markdown("""
-            <div style='background-color: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #ffc107;'>
-                <h4 style='margin: 0 0 0.5rem 0; color: #856404;'>⚠️ Ação Necessária</h4>
-                <p style='margin: 0; color: #856404;'>
-                    <strong>Streamlit Cloud:</strong><br>
-                    1. Abra o arquivo <code>SECRETS_TOML_COMPLETO.toml</code> na raiz do projeto<br>
-                    2. Copie <strong>TODO</strong> o conteúdo (Ctrl+A, Ctrl+C)<br>
-                    3. Vá em <strong>Settings > Secrets</strong> no painel do Streamlit Cloud<br>
-                    4. Cole o conteúdo e clique em <strong>Save</strong><br>
-                    5. Aguarde o app reiniciar (1-2 minutos)
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            with st.expander("📖 Desenvolvimento Local", expanded=False):
-                st.markdown("""
-                - Crie o arquivo `credenciais_bancos.py` na raiz do projeto
-                - Consulte `CREDENTIALS_SETUP.md` para detalhes
-                """)
+            st.error("❌ Credenciais não configuradas")
+            st.info("💡 Configure as credenciais em Settings > Secrets no Streamlit Cloud")
             fundos_disponiveis = []
         elif credenciais_source.startswith("error"):
             st.error(f"❌ Erro ao carregar credenciais: {credenciais_source}")
             fundos_disponiveis = []
         else:
+            st.success(f"✅ {len(SANTANDER_FUNDOS)} fundo(s) disponível(is)")
             fundos_disponiveis = sorted(list(SANTANDER_FUNDOS.keys()))
-            st.caption(f"✅ Credenciais carregadas: {credenciais_source} • {len(fundos_disponiveis)} fundos disponíveis")
         
         # Campo de busca/filtro
         filtro_fundo = st.text_input(
@@ -2010,101 +1969,75 @@ elif aba_selecionada == "📎 Comprovantes":
                         
                         for idx, fundo_id in enumerate(fundos_selecionados, 1):
                             st.markdown("---")
-                            st.write(f"### 🏦 Processando {idx}/{total_fundos}: {fundo_id}")
+                            st.markdown(f"### 🏦 {fundo_id} ({idx}/{total_fundos})")
                             
                             progress_bar.progress(idx / (total_fundos + 1))
-                            log_placeholder.info(f"⏳ [{idx}/{total_fundos}] Processando fundo: {fundo_id}...")
                             
                             try:
-                                st.write(f"🔍 Verificando módulo buscar_comprovantes_santander...")
-                                # Criar cliente Santander para o fundo
-                                if hasattr(module_buscar, 'SantanderComprovantes'):
-                                    st.write(f"✅ Módulo SantanderComprovantes encontrado")
-                                    # Tentar criar autenticação
-                                    auth = None
-                                    try:
-                                        st.write(f"🔧 Tentando import de credenciais_bancos...")
-                                        # Tentar import local primeiro
-                                        from credenciais_bancos import SantanderAuth
-                                        st.write(f"✅ Import OK, criando auth via SantanderAuth.criar_por_fundo")
-                                        auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
-                                        st.write(f"✅ Auth criado com sucesso via módulo local")
-                                    except ImportError as e_import:
-                                        # Usar função helper com secrets
-                                        st.write(f"⚠️ ImportError: {e_import}")
-                                        st.write(f"🔄 Usando criar_santander_auth_do_secrets...")
-                                        auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
-                                        st.write(f"✅ Auth criado via secrets")
-                                    except Exception as e_auth_local:
-                                        # Se falhar no modo local, tentar secrets
-                                        st.write(f"⚠️ Erro auth local: {type(e_auth_local).__name__}: {e_auth_local}")
-                                        st.write(f"🔄 Fallback: tentando secrets...")
-                                        auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
-                                        st.write(f"✅ Auth criado via secrets (fallback)")
-                                    
-                                    if not auth:
-                                        raise ValueError(f"Não foi possível criar autenticação para {fundo_id}")
-                                    
-                                    # Criar cliente de comprovantes
-                                    st.write(f"🔧 Criando cliente SantanderComprovantes...")
-                                    cliente = module_buscar.SantanderComprovantes(auth)
-                                    st.write(f"✅ Cliente criado com sucesso")
-                                    
-                                    # Buscar comprovantes
-                                    st.write(f"🔍 Listando comprovantes de {data_busca_str}...")
+                                # Criar autenticação
+                                auth = None
+                                try:
+                                    from credenciais_bancos import SantanderAuth
+                                    auth = SantanderAuth.criar_por_fundo(fundo_id, ambiente="producao")
+                                except ImportError:
+                                    auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
+                                except Exception:
+                                    auth = criar_santander_auth_do_secrets(fundo_id, ambiente="producao")
+                                
+                                if not auth:
+                                    raise ValueError(f"Não foi possível criar autenticação para {fundo_id}")
+                                
+                                # Criar cliente e listar comprovantes
+                                cliente = module_buscar.SantanderComprovantes(auth)
+                                
+                                with st.spinner(f"Consultando API Santander..."):
                                     comprovantes = cliente.listar_comprovantes(
                                         data_inicio=data_busca_str,
                                         data_fim=data_busca_str
                                     )
-                                    st.write(f"✅ Listagem concluída")
+                                
+                                if comprovantes:
+                                    # A API retorna os comprovantes em 'paymentsReceipts'
+                                    receipts_list = comprovantes.get('paymentsReceipts', [])
+                                    qtd = len(receipts_list)
                                     
-                                    # Debug: Mostrar estrutura da resposta
-                                    st.write(f"🔍 DEBUG: Tipo de resposta: {type(comprovantes)}")
-                                    if comprovantes and 'paymentsReceipts' in comprovantes:
-                                        st.write(f"🔍 DEBUG: Encontrado {len(comprovantes['paymentsReceipts'])} pagamentos")
-                                    
-                                    if comprovantes:
-                                        # A API retorna os comprovantes em 'paymentsReceipts'
-                                        receipts_list = comprovantes.get('paymentsReceipts', [])
-                                        qtd = len(receipts_list)
-                                        st.write(f"📊 Total de comprovantes: {qtd}")
-                                        comprovantes_encontrados += qtd
+                                    if qtd > 0:
+                                        st.info(f"� {qtd} comprovante(s) disponível(is)")
                                         
                                         # Baixar cada comprovante
-                                        for idx, payment_receipt in enumerate(receipts_list, 1):
+                                        for idx_comp, payment_receipt in enumerate(receipts_list, 1):
                                             try:
-                                                # A estrutura é: paymentsReceipts[].payment.paymentId
                                                 payment_data = payment_receipt.get('payment', {})
                                                 payment_id = payment_data.get('paymentId')
                                                 payee_name = payment_data.get('payee', {}).get('name', 'Desconhecido')
                                                 amount = payment_data.get('paymentAmountInfo', {}).get('direct', {}).get('amount', '0.00')
                                                 
-                                                st.write(f"  📄 {idx}/{qtd}: {payee_name} - R$ {amount}")
-                                                
-                                                if payment_id:
-                                                    # Usar buscar_e_baixar_comprovante que faz o fluxo completo
-                                                    pdf_path = cliente.buscar_e_baixar_comprovante(
-                                                        payment_id=payment_id,
-                                                        aguardar=True,
-                                                        max_retries=3
-                                                    )
-                                                    if pdf_path:
-                                                        comprovantes_baixados += 1
-                                                        st.write(f"    ✅ Baixado com sucesso")
+                                                # Mostrar progresso
+                                                status_text = f"⏳ Baixando {idx_comp}/{qtd}: {payee_name[:40]}... (R$ {amount})"
+                                                with st.spinner(status_text):
+                                                    if payment_id:
+                                                        pdf_path = cliente.buscar_e_baixar_comprovante(
+                                                            payment_id=payment_id,
+                                                            aguardar=True,
+                                                            max_retries=3
+                                                        )
+                                                        if pdf_path:
+                                                            comprovantes_baixados += 1
+                                                            st.success(f"✅ {idx_comp}/{qtd} - {payee_name[:40]}")
+                                                        else:
+                                                            st.warning(f"⚠️ {idx_comp}/{qtd} - Falha ao baixar")
                                                     else:
-                                                        st.warning(f"    ⚠️ Não foi possível baixar")
-                                                else:
-                                                    st.warning(f"    ⚠️ paymentId não encontrado")
+                                                        st.warning(f"⚠️ {idx_comp}/{qtd} - ID não disponível")
                                             except Exception as e_download:
-                                                st.warning(f"    ⚠️ Erro: {str(e_download)}")
+                                                st.error(f"❌ {idx_comp}/{qtd} - Erro: {str(e_download)[:60]}")
                                         
                                         log_placeholder.success(f"✅ {fundo_id}: {comprovantes_baixados} de {qtd} comprovante(s) baixado(s)")
                                     else:
-                                        log_placeholder.info(f"ℹ️ {fundo_id}: Nenhum comprovante encontrado")
-                                
+                                        st.info(f"ℹ️ Nenhum comprovante disponível para esta data")
+                                        log_placeholder.info(f"ℹ️ {fundo_id}: Sem comprovantes")
                                 else:
-                                    st.error("❌ Classe SantanderComprovantes não encontrada no módulo")
-                                    break
+                                    st.info(f"ℹ️ Nenhum comprovante disponível para esta data")
+                                    log_placeholder.info(f"ℹ️ {fundo_id}: Sem comprovantes")
                             
                             except Exception as e_fundo:
                                 import traceback
