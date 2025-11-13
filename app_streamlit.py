@@ -417,9 +417,49 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
     
     fundo = fundos[fundo_id]
     
-    # SEMPRE usar certificados do repositório (pasta certificados/)
-    cert_path = Path(__file__).parent / "certificados" / "santander_cert.pem"
-    key_path = Path(__file__).parent / "certificados" / "santander_key.pem"
+    # Tentar obter certificados do secrets (PRIORIDADE 1)
+    cert_pem = None
+    key_pem = None
+    
+    if "santander_fundos" in st.secrets:
+        if "cert_pem" in st.secrets["santander_fundos"]:
+            cert_pem = st.secrets["santander_fundos"]["cert_pem"]
+            st.write(f"✅ cert_pem encontrado no secrets ({len(cert_pem)} bytes)")
+        if "key_pem" in st.secrets["santander_fundos"]:
+            key_pem = st.secrets["santander_fundos"]["key_pem"]
+            st.write(f"✅ key_pem encontrado no secrets ({len(key_pem)} bytes)")
+    
+    # Se tiver certificados no secrets, criar arquivos temporários
+    if cert_pem and key_pem:
+        st.write(f"🔧 Criando arquivos temporários para certificados...")
+        import tempfile
+        
+        temp_dir = Path(tempfile.gettempdir()) / "santander_certs"
+        temp_dir.mkdir(exist_ok=True)
+        
+        cert_path = temp_dir / f"{fundo_id}_cert.pem"
+        key_path = temp_dir / f"{fundo_id}_key.pem"
+        
+        # Escrever certificados
+        with open(cert_path, 'w', encoding='utf-8', newline='\n') as f:
+            if not cert_pem.endswith('\n'):
+                cert_pem += '\n'
+            f.write(cert_pem)
+        
+        with open(key_path, 'w', encoding='utf-8', newline='\n') as f:
+            if not key_pem.endswith('\n'):
+                key_pem += '\n'
+            f.write(key_pem)
+        
+        st.write(f"✅ Certificados temporários criados:")
+        st.write(f"  📄 Cert: `{cert_path}`")
+        st.write(f"  🔑 Key: `{key_path}`")
+        
+    else:
+        # FALLBACK: Tentar usar certificados do repositório
+        st.write(f"⚠️ Certificados não encontrados no secrets, tentando repositório...")
+        cert_path = Path(__file__).parent / "certificados" / "santander_cert.pem"
+        key_path = Path(__file__).parent / "certificados" / "santander_key.pem"
     
     st.write(f"📂 **Diretório do script**: `{Path(__file__).parent}`")
     st.write(f"📂 **Certificado**: `{cert_path}`")
