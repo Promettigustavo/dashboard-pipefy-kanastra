@@ -8,6 +8,7 @@ Fase: "Aguardando pagamento"
 import requests
 import json
 import os
+import glob
 from datetime import datetime
 import subprocess
 import sys
@@ -357,6 +358,35 @@ def main(data_pagamento=None, pasta_saida=None):
     # Se não fornecida, usa data de hoje
     if data_pagamento is None:
         data_pagamento = datetime.now().strftime("%d/%m/%Y")
+    
+    # Definir pasta de trabalho
+    pasta_trabalho = pasta_saida if pasta_saida else os.path.join(os.path.expanduser("~"), "Downloads")
+    
+    # LIMPAR ARQUIVOS ANTIGOS ANTES DE INICIAR
+    print("\n🧹 LIMPANDO ARQUIVOS ANTIGOS")
+    print("=" * 40)
+    
+    padroes_limpar = [
+        "pipefy_taxas_*.xlsx",
+        "PipeTaxas_*.xlsx",
+        "PipeTaxas_Final*.xlsx"
+    ]
+    
+    arquivos_removidos = 0
+    for padrao in padroes_limpar:
+        for arquivo in glob.glob(os.path.join(pasta_trabalho, padrao)):
+            try:
+                os.remove(arquivo)
+                print(f"🗑️  Removido: {os.path.basename(arquivo)}")
+                arquivos_removidos += 1
+            except Exception as e:
+                print(f"⚠️  Erro ao remover {os.path.basename(arquivo)}: {e}")
+    
+    if arquivos_removidos == 0:
+        print("✅ Nenhum arquivo antigo encontrado")
+    else:
+        print(f"✅ {arquivos_removidos} arquivo(s) antigo(s) removido(s)")
+    print()
     
     # Token funcionando
     api_token = "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJQaXBlZnkiLCJpYXQiOjE3NjExMzkxNDcsImp0aSI6ImM1NzhhYzM5LTUwZmUtNGI0NC1iMzYzLWE5ZjNhMzBmNjUwYyIsInN1YiI6MzA2ODY4NTY3LCJ1c2VyIjp7ImlkIjozMDY4Njg1NjcsImVtYWlsIjoiZ3VzdGF2by5wcm9tZXR0aUBrYW5hc3RyYS5jb20uYnIifSwidXNlcl90eXBlIjoiYXV0aGVudGljYXRlZCJ9.hjcPATGMMX1xBcRMHQ7gfjkvqB7Nq9w0Ou9tD33fIlmLoicU928x5sd_T_nmkL04DV37GtxFtF5mCFaFSa4fVQ"
