@@ -426,17 +426,61 @@ def main(data_pagamento=None, pasta_saida=None):
         # 3. Executar pipeliquidao com o arquivo gerado e a data fornecida
         sucesso = executar_pipeliquidacao(caminho_arquivo, data_pagamento)
         
-        # 4. Resumo final
+        # 4. Coletar arquivos gerados
+        pasta_trabalho = pasta_saida if pasta_saida else os.path.join(os.path.expanduser("~"), "Downloads")
+        timestamp_hoje = datetime.now().strftime("%Y%m%d")
+        
+        # Procurar arquivos gerados
+        arquivos_gerados = []
+        
+        # Arquivo de entrada do Pipefy
+        if os.path.exists(caminho_arquivo):
+            arquivos_gerados.append(caminho_arquivo)
+        
+        # Arquivo principal de liquidação (Remessa)
+        padroes_remessa = [
+            f"Liquidacao_Remessa_{timestamp_hoje}.xlsx",
+            "Liquidacao_Remessa.xlsx",
+        ]
+        for padrao in padroes_remessa:
+            caminho_remessa = os.path.join(pasta_trabalho, padrao)
+            if os.path.exists(caminho_remessa):
+                arquivos_gerados.append(caminho_remessa)
+                break
+        
+        # Arquivo de não importados
+        padroes_nao_imp = [
+            f"Liquidacao_NaoImportados_{timestamp_hoje}.xlsx",
+            "Fundosnãoimportados.xlsx",
+        ]
+        for padrao in padroes_nao_imp:
+            caminho_nao_imp = os.path.join(pasta_trabalho, padrao)
+            if os.path.exists(caminho_nao_imp):
+                arquivos_gerados.append(caminho_nao_imp)
+                break
+        
+        # 5. Resumo final
         print(f"\n PROCESSO CONCLUDO")
         print("=" * 30)
         print(f" Mtodo: API Oficial do Pipefy")
         print(f" Filtro de cards: {' Sucesso' if sucesso_filtro else ' Com avisos'}")
-        print(f" Arquivo: {os.path.basename(caminho_arquivo)}")
+        print(f" Arquivo de entrada: {os.path.basename(caminho_arquivo)}")
         print(f" Pipeliquidao: {' Sucesso' if sucesso else ' Falha'}")
+        print(f" Arquivos gerados: {len(arquivos_gerados)}")
+        for arq in arquivos_gerados:
+            print(f"   - {os.path.basename(arq)}")
         print(f" Data utilizada: {data_pagamento}")
         print(f" Fim: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
-        return sucesso
+        # Retornar dicionário com todos os arquivos
+        resultado = {
+            'sucesso': sucesso,
+            'arquivo_entrada_pipefy': caminho_arquivo,
+            'arquivos_gerados': arquivos_gerados,
+            'qtd_arquivos': len(arquivos_gerados)
+        }
+        
+        return resultado
         
     except Exception as e:
         print(f" Erro geral no processo: {e}")

@@ -328,7 +328,10 @@ def executar_pipetaxas(caminho_arquivo, data_pagamento):
             print(f"📊 Registros processados: {resultado.get('qtd_ok', 0)}")
             print(f"📊 Registros pendentes: {resultado.get('qtd_pendentes', 0)}")
             
-            return True
+            # Adicionar arquivo de entrada ao resultado
+            resultado['arquivo_entrada_pipefy'] = caminho_arquivo
+            
+            return resultado
             
         except ImportError as e:
             print(f"❌ Erro ao importar PipeTaxas: {e}")

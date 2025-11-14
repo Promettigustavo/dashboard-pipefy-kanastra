@@ -616,8 +616,8 @@ def criar_santander_auth_do_secrets(fundo_id, ambiente="producao"):
 try:
     from config_streamlit import GITHUB_REPO, GITHUB_BRANCH
 except:
-    # Fallback se config não existir
-    GITHUB_REPO = st.secrets.get("github", {}).get("repo", "Promettigustavo/Automa-o-Finance")
+    # Fallback para Streamlit Cloud - usar secrets
+    GITHUB_REPO = st.secrets.get("github", {}).get("repo", "seu-usuario/seu-repo")
     GITHUB_BRANCH = st.secrets.get("github", {}).get("branch", "main")
 
 GITHUB_RAW_URL = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}"
@@ -1132,31 +1132,14 @@ if aba_selecionada == "💰 Liquidação":
                                     st.caption(f"🔍 Debug: Data formatada = {data_formatada}")
                                     st.caption(f"🔍 Debug: Pasta de trabalho = {pasta_trabalho}")
                                 
-                                # Executar módulo
+                                # Executar módulo - agora retorna dict com múltiplos arquivos
                                 resultado = module.main(data_pagamento=data_formatada, pasta_saida=pasta_trabalho)
                                 
                                 if mostrar_debug:
                                     st.caption(f"🔍 Debug: Resultado = {resultado}")
                                 
-                                # Procurar arquivo gerado mais recentemente
-                                arquivos_gerados = [f for f in os.listdir(pasta_trabalho) 
-                                                   if (f.startswith('liquidacao_') or f.startswith('PipeLiquidacao_')) 
-                                                   and f.endswith('.xlsx')]
-                                
-                                if mostrar_debug:
-                                    st.caption(f"🔍 Debug: Arquivos encontrados = {arquivos_gerados}")
-                                
-                                if arquivos_gerados:
-                                    arquivo_saida = max(arquivos_gerados, key=lambda x: os.path.getmtime(os.path.join(pasta_trabalho, x)))
-                                    arquivo_saida = os.path.join(pasta_trabalho, arquivo_saida)
-                                    st.success(f"✅ Arquivo gerado: {os.path.basename(arquivo_saida)}")
-                                else:
-                                    # Tentar encontrar qualquer arquivo .xlsx recente
-                                    if mostrar_debug:
-                                        todos_xlsx = [f for f in os.listdir(pasta_trabalho) if f.endswith('.xlsx')]
-                                        st.caption(f"🔍 Debug: Todos .xlsx = {todos_xlsx[:10]}")
-                                    arquivo_saida = os.path.join(pasta_trabalho, f"auto_liquidacao_{data_str}.xlsx")
-                                    st.warning(f"⚠️ Arquivo específico não encontrado. Nome esperado: {os.path.basename(arquivo_saida)}")
+                                # Não precisa mais procurar - o resultado já contém os arquivos
+                                arquivo_saida = None  # Será preenchido pela lógica de múltiplos arquivos
                             else:
                                 st.error(f"❌ Módulo auto_pipeliquidacao não disponível: {error}")
                         
@@ -1303,14 +1286,47 @@ if aba_selecionada == "💰 Liquidação":
                             
                             # Salvar no session_state
                             st.session_state['ultimo_resultado'] = resultado
-                            st.session_state['arquivo_saida'] = arquivo_saida
+                            
+                            # Se resultado é dict com arquivos múltiplos
+                            if isinstance(resultado, dict) and ('arquivos_gerados' in resultado or any(k in resultado for k in ['saida_taxas_final', 'arquivo_entrada_pipefy'])):
+                                # Coletar todos os arquivos gerados
+                                arquivos_gerados = []
+                                
+                                # Auto Liquidação - retorna lista em 'arquivos_gerados'
+                                if 'arquivos_gerados' in resultado and resultado['arquivos_gerados']:
+                                    arquivos_gerados.extend(resultado['arquivos_gerados'])
+                                
+                                # Auto Taxas - retorna arquivos individuais
+                                else:
+                                    # Arquivo de entrada do Pipefy
+                                    if 'arquivo_entrada_pipefy' in resultado and resultado['arquivo_entrada_pipefy']:
+                                        arquivos_gerados.append(resultado['arquivo_entrada_pipefy'])
+                                    
+                                    # Arquivo final processado
+                                    if 'saida_taxas_final' in resultado and resultado['saida_taxas_final']:
+                                        arquivos_gerados.append(resultado['saida_taxas_final'])
+                                    
+                                    # Arquivo de pendentes (se houver)
+                                    if 'saida_taxas_pendentes' in resultado and resultado['saida_taxas_pendentes']:
+                                        arquivos_gerados.append(resultado['saida_taxas_pendentes'])
+                                
+                                st.session_state['arquivos_saida'] = arquivos_gerados
+                                st.session_state['arquivo_saida'] = arquivo_saida  # Fallback
+                            else:
+                                # Modo legado - arquivo único
+                                st.session_state['arquivo_saida'] = arquivo_saida
+                                st.session_state['arquivos_saida'] = [arquivo_saida] if arquivo_saida else []
                             
                             # Exibir métricas
                             if isinstance(resultado, dict):
-                                cols_metricas = st.columns(min(4, len(resultado)))
-                                for idx, (key, value) in enumerate(list(resultado.items())[:4]):
-                                    with cols_metricas[idx]:
-                                        st.metric(key, value)
+                                # Filtrar apenas métricas numéricas/strings curtas
+                                metricas = {k: v for k, v in resultado.items() 
+                                           if k.startswith('qtd_') or k in ['qtd_total', 'qtd_ok', 'qtd_pendentes']}
+                                if metricas:
+                                    cols_metricas = st.columns(min(4, len(metricas)))
+                                    for idx, (key, value) in enumerate(list(metricas.items())[:4]):
+                                        with cols_metricas[idx]:
+                                            st.metric(key.replace('qtd_', '').replace('_', ' ').title(), value)
                             else:
                                 st.metric("Registros processados", resultado)
                         else:
@@ -1323,34 +1339,61 @@ if aba_selecionada == "💰 Liquidação":
                         st.session_state.status_auto = "❌ Erro"
         
         with col_exec2:
-            # Botão de download
-            if 'arquivo_saida' in st.session_state and st.session_state.get('arquivo_saida'):
-                st.markdown("### 📥 Download")
+            # Botão de download - suporte a múltiplos arquivos
+            if 'arquivos_saida' in st.session_state and st.session_state.get('arquivos_saida'):
+                st.markdown("### 📥 Downloads")
                 
-                arquivo_path = st.session_state['arquivo_saida']
+                arquivos_lista = st.session_state['arquivos_saida']
+                arquivos_encontrados = 0
                 
-                # Verificar se é caminho absoluto ou relativo
-                if not os.path.isabs(arquivo_path):
-                    # Procurar arquivo no diretório atual
-                    arquivo_path = os.path.join(os.getcwd(), arquivo_path)
+                for idx, arquivo_path in enumerate(arquivos_lista):
+                    if not arquivo_path:
+                        continue
+                    
+                    # Verificar se é caminho absoluto ou relativo
+                    if not os.path.isabs(arquivo_path):
+                        arquivo_path = os.path.join(os.getcwd(), arquivo_path)
+                    
+                    if os.path.exists(arquivo_path):
+                        arquivos_encontrados += 1
+                        nome_arquivo = os.path.basename(arquivo_path)
+                        
+                        # Determinar tipo de arquivo pelo nome
+                        nome_lower = nome_arquivo.lower()
+                        if 'pipefy' in nome_lower:
+                            emoji = "📊"
+                            tipo = "Entrada Pipefy"
+                        elif 'remessa' in nome_lower or 'liquidacao_' in nome_lower:
+                            emoji = "✅"
+                            tipo = "Remessa Processada"
+                        elif 'final' in nome_lower or 'pipetaxas_' in nome_lower:
+                            emoji = "✅"
+                            tipo = "Taxas Processadas"
+                        elif 'nao' in nome_lower and 'importado' in nome_lower:
+                            emoji = "⚠️"
+                            tipo = "Não Importados"
+                        elif 'pendente' in nome_lower:
+                            emoji = "⏳"
+                            tipo = "Pendentes"
+                        else:
+                            emoji = "📄"
+                            tipo = "Arquivo"
+                        
+                        with open(arquivo_path, 'rb') as f:
+                            st.download_button(
+                                label=f"{emoji} {tipo}: {nome_arquivo}",
+                                data=f,
+                                file_name=nome_arquivo,
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                use_container_width=True,
+                                key=f"download_multi_{idx}_{nome_arquivo}"
+                            )
                 
-                if os.path.exists(arquivo_path):
-                    with open(arquivo_path, 'rb') as f:
-                        st.download_button(
-                            label="📥 Baixar Resultado",
-                            data=f,
-                            file_name=os.path.basename(arquivo_path),
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            use_container_width=True
-                        )
-                    st.caption(f"📄 {os.path.basename(arquivo_path)}")
-                else:
-                    st.warning(f"⚠️ Arquivo não encontrado: {os.path.basename(arquivo_path)}")
-                    st.caption(f"Caminho procurado: {arquivo_path}")
+                if arquivos_encontrados == 0:
+                    st.warning("⚠️ Nenhum arquivo encontrado")
                     
                     # Tentar encontrar arquivos .xlsx recentes no diretório (excluindo bases de dados)
                     try:
-                        # Arquivos a ignorar (bases de dados)
                         arquivos_ignorar = [
                             'Basedadosfundos.xlsx',
                             'Basedadosfundos_Arbi.xlsx',
@@ -1365,7 +1408,7 @@ if aba_selecionada == "💰 Liquidação":
                             reverse=True
                         )
                         if arquivos_xlsx:
-                            st.info("📁 Arquivos .xlsx encontrados (mais recentes primeiro):")
+                            st.info("📁 Arquivos .xlsx recentes:")
                             for arq in arquivos_xlsx[:5]:  # Mostrar até 5
                                 if os.path.exists(arq):
                                     with open(arq, 'rb') as f:
@@ -1374,12 +1417,36 @@ if aba_selecionada == "💰 Liquidação":
                                             data=f,
                                             file_name=arq,
                                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                            key=f"download_{arq}"
+                                            key=f"download_fallback_{arq}"
                                         )
                     except Exception as e:
                         st.error(f"Erro ao listar arquivos: {e}")
+                else:
+                    st.caption(f"📦 {arquivos_encontrados} arquivo(s) disponível(is)")
+            
+            elif 'arquivo_saida' in st.session_state and st.session_state.get('arquivo_saida'):
+                # Fallback para modo legado (arquivo único)
+                st.markdown("### 📥 Download")
+                
+                arquivo_path = st.session_state['arquivo_saida']
+                
+                if not os.path.isabs(arquivo_path):
+                    arquivo_path = os.path.join(os.getcwd(), arquivo_path)
+                
+                if os.path.exists(arquivo_path):
+                    with open(arquivo_path, 'rb') as f:
+                        st.download_button(
+                            label="📥 Baixar Resultado",
+                            data=f,
+                            file_name=os.path.basename(arquivo_path),
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    st.caption(f"📄 {os.path.basename(arquivo_path)}")
+                else:
+                    st.warning(f"⚠️ Arquivo não encontrado: {os.path.basename(arquivo_path)}")
             else:
-                st.info("💡 Execute a automação para gerar o arquivo")
+                st.info("💡 Execute a automação para gerar os arquivos")
         
     
     # ===== MODO MANUAL (COM ARQUIVO) =====
