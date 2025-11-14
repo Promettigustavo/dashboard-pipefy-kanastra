@@ -1072,6 +1072,16 @@ if aba_selecionada == "💰 Liquidação":
             
             st.markdown("---")
             
+            # Modo debug
+            mostrar_debug = st.checkbox(
+                "🔍 Mostrar logs de debug",
+                value=False,
+                key="mostrar_debug_auto",
+                help="Exibe informações detalhadas do processamento"
+            )
+            
+            st.markdown("---")
+            
             # Status
             if 'status_auto' not in st.session_state:
                 st.session_state.status_auto = "⏸️ Aguardando"
@@ -1094,11 +1104,17 @@ if aba_selecionada == "💰 Liquidação":
                     try:
                         st.session_state.status_auto = "▶️ Executando..."
                         
+                        # Obter configuração de debug
+                        mostrar_debug = st.session_state.get('mostrar_debug_auto', False)
+                        
                         # Formatar data
                         data_str = data_pagamento_api.strftime("%Y-%m-%d")
                         
                         resultado = None
                         arquivo_saida = None
+                        
+                        # Log inicial
+                        st.info(f"🕐 Iniciando processamento às {datetime.now().strftime('%H:%M:%S')}")
                         
                         # Executar automação selecionada
                         if modulo_auto == "Auto Liquidação":
@@ -1110,33 +1126,80 @@ if aba_selecionada == "💰 Liquidação":
                                 # Passar data e pasta de saída para o módulo
                                 data_formatada = data_pagamento_api.strftime("%d/%m/%Y")
                                 pasta_trabalho = os.getcwd()
+                                
+                                # Debug
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Data formatada = {data_formatada}")
+                                    st.caption(f"🔍 Debug: Pasta de trabalho = {pasta_trabalho}")
+                                
+                                # Executar módulo
                                 resultado = module.main(data_pagamento=data_formatada, pasta_saida=pasta_trabalho)
                                 
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Resultado = {resultado}")
+                                
                                 # Procurar arquivo gerado mais recentemente
-                                arquivos_gerados = [f for f in os.listdir(pasta_trabalho) if f.startswith('liquidacao_') and f.endswith('.xlsx')]
+                                arquivos_gerados = [f for f in os.listdir(pasta_trabalho) 
+                                                   if (f.startswith('liquidacao_') or f.startswith('PipeLiquidacao_')) 
+                                                   and f.endswith('.xlsx')]
+                                
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Arquivos encontrados = {arquivos_gerados}")
+                                
                                 if arquivos_gerados:
                                     arquivo_saida = max(arquivos_gerados, key=lambda x: os.path.getmtime(os.path.join(pasta_trabalho, x)))
                                     arquivo_saida = os.path.join(pasta_trabalho, arquivo_saida)
+                                    st.success(f"✅ Arquivo gerado: {os.path.basename(arquivo_saida)}")
                                 else:
+                                    # Tentar encontrar qualquer arquivo .xlsx recente
+                                    if mostrar_debug:
+                                        todos_xlsx = [f for f in os.listdir(pasta_trabalho) if f.endswith('.xlsx')]
+                                        st.caption(f"🔍 Debug: Todos .xlsx = {todos_xlsx[:10]}")
                                     arquivo_saida = os.path.join(pasta_trabalho, f"auto_liquidacao_{data_str}.xlsx")
+                                    st.warning(f"⚠️ Arquivo específico não encontrado. Nome esperado: {os.path.basename(arquivo_saida)}")
                             else:
-                                # Fallback: usar módulo de anexar comprovantes
-                                module_fallback, error_fb = get_module('Anexarcomprovantespipe')
-                                if module_fallback:
-                                    st.info(f"🔄 Executando anexação de comprovantes (Liquidação)...")
-                                    st.info(f"📅 Data de pagamento: {data_str}")
-                                    resultado = module_fallback.main()
-                                    arquivo_saida = f"comprovantes_liquidacao_{data_str}.xlsx"
-                                else:
-                                    st.error(f"❌ Módulo de automação não disponível: {error or error_fb}")
+                                st.error(f"❌ Módulo auto_pipeliquidacao não disponível: {error}")
                         
                         elif modulo_auto == "Auto Taxas":
                             module, error = get_module('auto_pipetaxas')
                             if module:
                                 st.info(f"🔄 Executando Auto Taxas via API Pipefy...")
                                 st.info(f"📅 Data de pagamento: {data_str}")
-                                resultado = module.main()
-                                arquivo_saida = f"auto_taxas_{data_str}.xlsx"
+                                
+                                # Passar data e pasta de saída para o módulo
+                                data_formatada = data_pagamento_api.strftime("%d/%m/%Y")
+                                pasta_trabalho = os.getcwd()
+                                
+                                # Debug
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Data formatada = {data_formatada}")
+                                    st.caption(f"🔍 Debug: Pasta de trabalho = {pasta_trabalho}")
+                                
+                                # Executar módulo
+                                resultado = module.main(data_pagamento=data_formatada, pasta_saida=pasta_trabalho)
+                                
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Resultado = {resultado}")
+                                
+                                # Procurar arquivo gerado mais recentemente
+                                arquivos_gerados = [f for f in os.listdir(pasta_trabalho) 
+                                                   if (f.startswith('PipeTaxas_Final') or f.startswith('PipeTaxas_')) 
+                                                   and f.endswith('.xlsx')]
+                                
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Arquivos encontrados = {arquivos_gerados}")
+                                
+                                if arquivos_gerados:
+                                    arquivo_saida = max(arquivos_gerados, key=lambda x: os.path.getmtime(os.path.join(pasta_trabalho, x)))
+                                    arquivo_saida = os.path.join(pasta_trabalho, arquivo_saida)
+                                    st.success(f"✅ Arquivo gerado: {os.path.basename(arquivo_saida)}")
+                                else:
+                                    # Tentar encontrar qualquer arquivo .xlsx recente
+                                    if mostrar_debug:
+                                        todos_xlsx = [f for f in os.listdir(pasta_trabalho) if f.endswith('.xlsx')]
+                                        st.caption(f"🔍 Debug: Todos .xlsx = {todos_xlsx[:10]}")
+                                    arquivo_saida = os.path.join(pasta_trabalho, f"auto_taxas_{data_str}.xlsx")
+                                    st.warning(f"⚠️ Arquivo específico não encontrado. Nome esperado: {os.path.basename(arquivo_saida)}")
                             else:
                                 # Fallback: usar módulo de anexar comprovantes taxas
                                 module_fallback, error_fb = get_module('Anexarcomprovantespipetaxas')
@@ -1153,8 +1216,40 @@ if aba_selecionada == "💰 Liquidação":
                             if module:
                                 st.info(f"🔄 Executando Auto Amortização via API Pipefy...")
                                 st.info(f"📅 Data de referência: {data_str}")
-                                resultado = module.main()
-                                arquivo_saida = f"auto_amortizacao_{data_str}.xlsx"
+                                
+                                # Passar data e pasta de saída para o módulo
+                                data_formatada = data_pagamento_api.strftime("%d/%m/%Y")
+                                pasta_trabalho = os.getcwd()
+                                
+                                # Debug
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Data formatada = {data_formatada}")
+                                    st.caption(f"🔍 Debug: Pasta de trabalho = {pasta_trabalho}")
+                                
+                                # Executar módulo
+                                resultado = module.main(data_pagamento=data_formatada, pasta_saida=pasta_trabalho)
+                                
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Resultado = {resultado}")
+                                
+                                # Procurar arquivo gerado mais recentemente
+                                arquivos_gerados = [f for f in os.listdir(pasta_trabalho) 
+                                                   if f.startswith('Amortizacao_') and f.endswith('.xlsx')]
+                                
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Arquivos encontrados = {arquivos_gerados}")
+                                
+                                if arquivos_gerados:
+                                    arquivo_saida = max(arquivos_gerados, key=lambda x: os.path.getmtime(os.path.join(pasta_trabalho, x)))
+                                    arquivo_saida = os.path.join(pasta_trabalho, arquivo_saida)
+                                    st.success(f"✅ Arquivo gerado: {os.path.basename(arquivo_saida)}")
+                                else:
+                                    # Tentar encontrar qualquer arquivo .xlsx recente
+                                    if mostrar_debug:
+                                        todos_xlsx = [f for f in os.listdir(pasta_trabalho) if f.endswith('.xlsx')]
+                                        st.caption(f"🔍 Debug: Todos .xlsx = {todos_xlsx[:10]}")
+                                    arquivo_saida = os.path.join(pasta_trabalho, f"auto_amortizacao_{data_str}.xlsx")
+                                    st.warning(f"⚠️ Arquivo específico não encontrado. Nome esperado: {os.path.basename(arquivo_saida)}")
                             else:
                                 st.error(f"❌ Módulo auto_amortizacao não disponível: {error}")
                         
@@ -1163,8 +1258,41 @@ if aba_selecionada == "💰 Liquidação":
                             if module:
                                 st.info(f"🔄 Executando Auto Taxas ANBIMA...")
                                 st.info(f"📅 Data de referência: {data_str}")
-                                resultado = module.main()
-                                arquivo_saida = f"taxas_anbima_{data_str}.xlsx"
+                                
+                                # Passar data e pasta de saída para o módulo
+                                data_formatada = data_pagamento_api.strftime("%d/%m/%Y")
+                                pasta_trabalho = os.getcwd()
+                                
+                                # Debug
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Data formatada = {data_formatada}")
+                                    st.caption(f"🔍 Debug: Pasta de trabalho = {pasta_trabalho}")
+                                
+                                # Executar módulo
+                                resultado = module.main(data_pagamento=data_formatada, pasta_saida=pasta_trabalho)
+                                
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Resultado = {resultado}")
+                                
+                                # Procurar arquivo gerado mais recentemente
+                                arquivos_gerados = [f for f in os.listdir(pasta_trabalho) 
+                                                   if (f.startswith('PipeTaxas_Final') or f.startswith('PipeTaxas_')) 
+                                                   and f.endswith('.xlsx')]
+                                
+                                if mostrar_debug:
+                                    st.caption(f"🔍 Debug: Arquivos encontrados = {arquivos_gerados}")
+                                
+                                if arquivos_gerados:
+                                    arquivo_saida = max(arquivos_gerados, key=lambda x: os.path.getmtime(os.path.join(pasta_trabalho, x)))
+                                    arquivo_saida = os.path.join(pasta_trabalho, arquivo_saida)
+                                    st.success(f"✅ Arquivo gerado: {os.path.basename(arquivo_saida)}")
+                                else:
+                                    # Tentar encontrar qualquer arquivo .xlsx recente
+                                    if mostrar_debug:
+                                        todos_xlsx = [f for f in os.listdir(pasta_trabalho) if f.endswith('.xlsx')]
+                                        st.caption(f"🔍 Debug: Todos .xlsx = {todos_xlsx[:10]}")
+                                    arquivo_saida = os.path.join(pasta_trabalho, f"taxas_anbima_{data_str}.xlsx")
+                                    st.warning(f"⚠️ Arquivo específico não encontrado. Nome esperado: {os.path.basename(arquivo_saida)}")
                             else:
                                 st.error(f"❌ Módulo auto_taxasanbima não disponível: {error}")
                         
