@@ -899,14 +899,15 @@ if aba_selecionada == "💰 Liquidação":
                                 elif isinstance(value, list):
                                     lists[key] = value
                             
-                            # Exibir métricas numéricas em colunas
+                            # Exibir métricas numéricas em colunas (exceto IDs de fases)
                             cols = [col1, col2, col3, col4]
-                            for idx, (key, value) in enumerate(metrics.items()):
+                            metrics_to_show = {k: v for k, v in metrics.items() 
+                                             if k not in ['fase_origem_id', 'fase_destino_id']}
+                            
+                            for idx, (key, value) in enumerate(metrics_to_show.items()):
                                 with cols[idx % 4]:
                                     # Traduzir nomes das métricas
                                     label_map = {
-                                        'fase_origem_id': '📤 Fase Origem',
-                                        'fase_destino_id': '📥 Fase Destino',
                                         'cards_movimentaveis': '🎯 Movimentáveis',
                                         'cards_bloqueados': '🔒 Bloqueados',
                                         'cards_movidos': '✅ Movidos',
@@ -972,14 +973,15 @@ if aba_selecionada == "💰 Liquidação":
                                 elif isinstance(value, list):
                                     lists[key] = value
                             
-                            # Exibir métricas numéricas em colunas
+                            # Exibir métricas numéricas em colunas (exceto IDs de fases)
                             cols = [col1, col2, col3, col4]
-                            for idx, (key, value) in enumerate(metrics.items()):
+                            metrics_to_show = {k: v for k, v in metrics.items() 
+                                             if k not in ['fase_origem_id', 'fase_destino_id']}
+                            
+                            for idx, (key, value) in enumerate(metrics_to_show.items()):
                                 with cols[idx % 4]:
                                     # Traduzir nomes das métricas
                                     label_map = {
-                                        'fase_origem_id': '📤 Fase Origem',
-                                        'fase_destino_id': '📥 Fase Destino',
                                         'cards_movimentaveis': '🎯 Movimentáveis',
                                         'cards_bloqueados': '🔒 Bloqueados',
                                         'cards_movidos': '✅ Movidos',
