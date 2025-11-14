@@ -288,13 +288,24 @@ def baixar_arquivo(file_url, pasta_saida=None):
         
         print(f" Baixando arquivo...")
         print(f" Nome: {nome_arquivo}")
+        print(f" 🕒 Timestamp da geração: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
         # Baixar o arquivo
+        inicio_download = time.time()
         response = requests.get(file_url, timeout=120)
+        tempo_download = time.time() - inicio_download
         
         if response.status_code != 200:
             print(f" Erro HTTP ao baixar arquivo: {response.status_code}")
             return None
+        
+        print(f" ⏱️  Tempo de download: {tempo_download:.2f}s")
+        print(f" 📊 Tamanho do conteúdo baixado: {len(response.content):,} bytes")
+        
+        # Calcular hash do conteúdo para verificar se é único
+        import hashlib
+        content_hash = hashlib.md5(response.content).hexdigest()
+        print(f" 🔐 Hash MD5 do arquivo: {content_hash[:16]}...")
         
         # Salvar arquivo
         with open(caminho_arquivo, 'wb') as f:
@@ -303,10 +314,15 @@ def baixar_arquivo(file_url, pasta_saida=None):
         # Verificar se o arquivo foi salvo
         if os.path.exists(caminho_arquivo):
             tamanho = os.path.getsize(caminho_arquivo)
-            print(f"Arquivo baixado com sucesso!")
-            print(f"Tamanho: {tamanho:,} bytes ({tamanho/1024:.1f} KB)")
-            print(f"Pasta: {pasta_saida}")
-            print(f"Caminho completo: {caminho_arquivo}")
+            criacao = datetime.fromtimestamp(os.path.getctime(caminho_arquivo))
+            modificacao = datetime.fromtimestamp(os.path.getmtime(caminho_arquivo))
+            
+            print(f"✅ Arquivo baixado com sucesso!")
+            print(f"📊 Tamanho: {tamanho:,} bytes ({tamanho/1024:.1f} KB)")
+            print(f" 📅 Data de criação: {criacao.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f" 📆 Data de modificação: {modificacao.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"📁 Pasta: {pasta_saida}")
+            print(f"📁 Caminho completo: {caminho_arquivo}")
             
             return caminho_arquivo
         else:
