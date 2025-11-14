@@ -1113,6 +1113,14 @@ if aba_selecionada == "💰 Liquidação":
                         resultado = None
                         arquivo_saida = None
                         
+                        # Limpar cache de arquivos anteriores
+                        if 'arquivos_saida' in st.session_state:
+                            del st.session_state['arquivos_saida']
+                        if 'arquivo_saida' in st.session_state:
+                            del st.session_state['arquivo_saida']
+                        if 'ultimo_resultado' in st.session_state:
+                            del st.session_state['ultimo_resultado']
+                        
                         # Log inicial
                         st.info(f"🕐 Iniciando processamento às {datetime.now().strftime('%H:%M:%S')}")
                         
