@@ -2501,35 +2501,23 @@ elif aba_selecionada == "📎 Comprovantes":
                         if hasattr(module, 'processar_todos_cards'):
                             # Avisar que pode demorar
                             with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
-                                st.caption("� Modo: Cache completo (V1 - padrão)")
+                                st.caption("📋 Modo: Cache completo (V1 - padrão)")
                                 
                                 # Container para status dinâmico
                                 status_atual = st.empty()
-                                status_atual.info("� Buscando cards na fase 'Aguardando Comprovante'...")
+                                status_atual.info("📋 Buscando cards na fase 'Aguardando Comprovante'...")
                                 
                                 progress_bar.progress(pipe_atual / (pipes_total + 1) * 0.7)
                                 
-                                # Processar - PASSANDO OS CLIENTES
+                                # Processar - Módulo de taxas NÃO suporta callback_status
                                 try:
-                                    # Criar função de callback para atualizar status
-                                    def atualizar_status(mensagem):
-                                        status_atual.info(mensagem)
+                                    status_atual.info("⏳ Processando cards do Pipe Taxas...")
                                     
-                                    # Verificar se a função aceita callback
-                                    import inspect
-                                    sig = inspect.signature(module.processar_todos_cards)
-                                    
-                                    if 'callback_status' in sig.parameters:
-                                        resultados = module.processar_todos_cards(
-                                            data_busca=data_busca_str,
-                                            clientes_santander=clientes_santander,
-                                            callback_status=atualizar_status
-                                        )
-                                    else:
-                                        resultados = module.processar_todos_cards(
-                                            data_busca=data_busca_str,
-                                            clientes_santander=clientes_santander
-                                        )
+                                    # Chamar SEM callback (taxas não suporta)
+                                    resultados = module.processar_todos_cards(
+                                        data_busca=data_busca_str,
+                                        clientes_santander=clientes_santander
+                                    )
                                     
                                     status_atual.success("✅ Processamento concluído!")
                                 except Exception as e_proc:
