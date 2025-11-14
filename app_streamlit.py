@@ -2521,13 +2521,6 @@ elif aba_selecionada == "📎 Comprovantes":
         st.markdown("---")
         
         # Botão principal
-        # Opção de versão otimizada
-        usar_otimizacao = st.checkbox(
-            "🚀 Usar versão otimizada V2 (experimental - busca sob demanda)",
-            value=False,
-            help="Versão otimizada que busca comprovantes apenas dos fundos necessários, em vez de cachear todos. Mais rápido e usa menos memória."
-        )
-        
         if st.button(
             "▶ Anexar Comprovantes",
             type="primary",
@@ -2610,12 +2603,6 @@ elif aba_selecionada == "📎 Comprovantes":
                         if hasattr(module, 'processar_todos_cards'):
                             # Avisar que pode demorar
                             with st.spinner("⏳ Processando... Esta operação pode levar alguns minutos dependendo da quantidade de cards e comprovantes."):
-                                # Mostrar qual versão está usando
-                                if usar_otimizacao:
-                                    st.caption("🚀 Modo: Busca otimizada sob demanda (V2)")
-                                else:
-                                    st.caption("💡 Modo: Cache completo (V1 - padrão)")
-                                
                                 # Container para status dinâmico
                                 status_atual = st.empty()
                                 status_atual.info("🔍 Buscando cards na fase 'Aguardando Comprovante'...")
@@ -2631,33 +2618,19 @@ elif aba_selecionada == "📎 Comprovantes":
                                     # Verificar se a função aceita callback
                                     import inspect
                                     
-                                    # Escolher função baseado no checkbox
-                                    if usar_otimizacao and hasattr(module, 'processar_todos_cards_v2_otimizado'):
-                                        sig = inspect.signature(module.processar_todos_cards_v2_otimizado)
-                                        if 'callback_status' in sig.parameters:
-                                            resultados = module.processar_todos_cards_v2_otimizado(
-                                                data_busca=data_busca_str,
-                                                clientes_santander=clientes_santander,
-                                                callback_status=atualizar_status
-                                            )
-                                        else:
-                                            resultados = module.processar_todos_cards_v2_otimizado(
-                                                data_busca=data_busca_str,
-                                                clientes_santander=clientes_santander
-                                            )
+                                    # Usar apenas V1 (padrão)
+                                    sig = inspect.signature(module.processar_todos_cards)
+                                    if 'callback_status' in sig.parameters:
+                                        resultados = module.processar_todos_cards(
+                                            data_busca=data_busca_str,
+                                            clientes_santander=clientes_santander,
+                                            callback_status=atualizar_status
+                                        )
                                     else:
-                                        sig = inspect.signature(module.processar_todos_cards)
-                                        if 'callback_status' in sig.parameters:
-                                            resultados = module.processar_todos_cards(
-                                                data_busca=data_busca_str,
-                                                clientes_santander=clientes_santander,
-                                                callback_status=atualizar_status
-                                            )
-                                        else:
-                                            resultados = module.processar_todos_cards(
-                                                data_busca=data_busca_str,
-                                                clientes_santander=clientes_santander
-                                            )
+                                        resultados = module.processar_todos_cards(
+                                            data_busca=data_busca_str,
+                                            clientes_santander=clientes_santander
+                                        )
                                     
                                     status_atual.success("✅ Processamento concluído!")
                                 except Exception as e_proc:
@@ -2829,38 +2802,6 @@ elif aba_selecionada == "📎 Comprovantes":
                 st.error(f"❌ Erro durante processamento: {str(e)}")
                 with st.expander("🔍 Detalhes do erro"):
                     st.code(traceback.format_exc())
-        
-        # Botão de teste
-        if st.button(
-            "🧪 Testar Matching (sem anexar)",
-            use_container_width=True,
-            key="btn_testar_matching",
-            disabled=not pipe_liquidacao
-        ):
-            with st.spinner("Testando matching..."):
-                try:
-                    data_busca_str = data_pipefy.strftime("%Y-%m-%d")
-                    
-                    st.markdown("---")
-                    st.markdown("### 🧪 Teste de Matching")
-                    
-                    module, error = get_module('Anexarcomprovantespipe')
-                    if not module:
-                        st.error(f"❌ Módulo não disponível: {error}")
-                    else:
-                        st.info(f"📅 Data: {data_busca_str}")
-                        st.info("⚠️ Modo teste - Sem anexar ou mover cards")
-                        
-                        if hasattr(module, 'testar_matching_apenas'):
-                            module.testar_matching_apenas(data_busca=data_busca_str)
-                            st.success("✅ Teste concluído!")
-                        else:
-                            st.error("❌ Função testar_matching_apenas não encontrada")
-                
-                except Exception as e:
-                    st.error(f"❌ Erro: {str(e)}")
-                    with st.expander("� Detalhes do erro"):
-                        st.code(traceback.format_exc())
 
 
 # ===== RODAPÉ =====
