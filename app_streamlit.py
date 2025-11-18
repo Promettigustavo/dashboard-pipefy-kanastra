@@ -387,6 +387,7 @@ def get_santander_credentials():
                 # Montar dict no formato do credenciais_bancos.py
                 fundos_dict[fundo_id] = {
                     "nome": fundo_secrets.get("nome", ""),
+                    "nome_pipe_liq": fundo_secrets.get("nome_pipe_liq", ""),  # ← IMPORTANTE para lookup de CNPJ
                     "cnpj": fundo_secrets.get("cnpj", ""),
                     "client_id": fundo_secrets.get("client_id", ""),
                     "client_secret": fundo_secrets.get("client_secret", ""),
