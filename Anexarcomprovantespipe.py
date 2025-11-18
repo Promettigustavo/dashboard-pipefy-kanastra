@@ -22,7 +22,12 @@ if sys.platform == 'win32':
 
 # Importar credenciais e classe de autenticação
 try:
-    from credenciais_bancos import SantanderAuth, criar_auth_para_todos_fundos, listar_fundos_configurados
+    from credenciais_bancos import (
+        SantanderAuth, 
+        criar_auth_para_todos_fundos, 
+        listar_fundos_configurados,
+        SANTANDER_FUNDOS
+    )
     from buscar_comprovantes_santander import SantanderComprovantes
     HAS_CREDENCIAIS = True
 except ImportError as e:
@@ -32,12 +37,44 @@ except ImportError as e:
     criar_auth_para_todos_fundos = None
     listar_fundos_configurados = None
     SantanderComprovantes = None
+    SANTANDER_FUNDOS = {}
     # Não fazer sys.exit() para permitir que o módulo seja importado no Streamlit Cloud
 
 # ==================== CONFIGURAÇÃO ====================
 
 # Configurações Pipefy
 PIPEFY_API_TOKEN = "eyJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJQaXBlZnkiLCJpYXQiOjE3NjExMzkxNDcsImp0aSI6ImM1NzhhYzM5LTUwZmUtNGI0NC1iMzYzLWE5ZjNhMzBmNjUwYyIsInN1YiI6MzA2ODY4NTY3LCJ1c2VyIjp7ImlkIjozMDY4Njg1NjcsImVtYWlsIjoiZ3VzdGF2by5wcm9tZXR0aUBrYW5hc3RyYS5jb20uYnIifSwidXNlcl90eXBlIjoiYXV0aGVudGljYXRlZCJ9.hjcPATGMMX1xBcRMHQ7gfjkvqB7Nq9w0Ou9tD33fIlmLoicU928x5sd_T_nmkL04DV37GtxFtF5mCFaFSa4fVQ"
+
+# ==================== FUNÇÕES AUXILIARES ====================
+
+def obter_cnpj_por_nome_fundo(nome_fundo):
+    """
+    Obtém o CNPJ do fundo a partir do nome que aparece no Pipefy (Liquidação)
+    
+    Args:
+        nome_fundo: Nome do fundo como aparece no campo "Nome do Fundo" do Pipefy
+    
+    Returns:
+        CNPJ formatado (XX.XXX.XXX/XXXX-XX) ou None se não encontrado
+    """
+    if not nome_fundo or not SANTANDER_FUNDOS:
+        return None
+    
+    # Normalizar nome do fundo (remover acentos, upper case, strip)
+    from unicodedata import normalize
+    nome_normalizado = normalize('NFKD', str(nome_fundo).strip().upper()).encode('ASCII', 'ignore').decode('ASCII')
+    
+    # Percorrer todos os fundos e comparar nome_pipe_liq
+    for fundo_id, config in SANTANDER_FUNDOS.items():
+        if 'nome_pipe_liq' in config:
+            nome_pipe_normalizado = normalize('NFKD', config['nome_pipe_liq'].strip().upper()).encode('ASCII', 'ignore').decode('ASCII')
+            
+            if nome_normalizado == nome_pipe_normalizado:
+                cnpj = config.get('cnpj', '')
+                if cnpj:
+                    return cnpj
+    
+    return None
 PIPEFY_API_URL = "https://api.pipefy.com/graphql"
 PIPE_LIQUIDACAO_ID = "303418384"
 
@@ -426,10 +463,25 @@ def extrair_dados_para_matching(card):
         dados['nome_fundo'] = str(fields_dict['nome do fundo'])
     
     # 7. EXTRAIR CNPJ DO FUNDO
-    if 'cnpj do fundo' in fields_dict and fields_dict['cnpj do fundo']:
+    # NOVA LÓGICA: Buscar CNPJ a partir do nome do fundo usando nome_pipe_liq
+    if dados.get('nome_fundo'):
+        cnpj_encontrado = obter_cnpj_por_nome_fundo(dados['nome_fundo'])
+        if cnpj_encontrado:
+            # Limpar CNPJ (remover pontos, traços, barras)
+            cnpj_limpo = re.sub(r'\D', '', cnpj_encontrado)
+            if len(cnpj_limpo) == 14:
+                dados['cnpj_fundo'] = cnpj_limpo
+                # Log informativo
+                log(f"   ✅ CNPJ encontrado via lookup: {dados['nome_fundo']} → {cnpj_encontrado}")
+        else:
+            log(f"   ⚠️ Fundo '{dados['nome_fundo']}' não encontrado no mapeamento nome_pipe_liq")
+    
+    # FALLBACK: Se não encontrou pelo nome, tentar campo "cnpj do fundo" (se existir)
+    if not dados.get('cnpj_fundo') and 'cnpj do fundo' in fields_dict and fields_dict['cnpj do fundo']:
         cnpj_fundo = re.sub(r'\D', '', str(fields_dict['cnpj do fundo']))
         if len(cnpj_fundo) == 14:
             dados['cnpj_fundo'] = cnpj_fundo
+            log(f"   ✅ CNPJ extraído do campo 'CNPJ do Fundo': {cnpj_fundo}")
     
     # 8. EXTRAIR DESCRIÇÃO
     if 'descrição' in fields_dict:
