@@ -209,11 +209,11 @@ def main():
     
     args = parser.parse_args()
     
-    # Calcular datas
+    # Buscar apenas o dia atual (não retroativo)
     data_fim = datetime.now().date()
-    data_inicio = data_fim - timedelta(days=args.dias)
+    data_inicio = data_fim  # Mesmo dia - apenas hoje
     
-    logger.info(f"Buscando comprovantes de {data_inicio} até {data_fim} ({args.dias} dias)")
+    logger.info(f"Buscando comprovantes de {data_inicio} até {data_fim} (somente dia atual)")
     
     # Listar comprovantes de TODOS os fundos
     comprovantes = listar_comprovantes_todos_fundos()
