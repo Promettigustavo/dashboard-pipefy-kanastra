@@ -244,7 +244,8 @@ async function buscarComprovanteComRetry(
 }
 
 // Intervalo de atualização de comprovantes (5 minutos)
-const INTERVALO_ATUALIZACAO_COMPROVANTES = 5 * 60 * 1000; // 5 minutos em ms
+const INTERVALO_ATUALIZACAO_COMPROVANTES = 15 * 60 * 1000; // 15 minutos em ms
+const CACHE_RELOAD_INTERVAL = 15; // Recarregar cache a cada N itens processados
 
 // Sistema de logging em arquivo
 let logBuffer = '';
@@ -377,26 +378,36 @@ function buscarComprovantesBackground(): Promise<void> {
 
 /**
  * Inicia loop de atualização automática de comprovantes
- * Atualiza a cada 5 minutos em background
+ * A cada 15 minutos: PAUSA o robô → Busca novos comprovantes → REINICIA do zero
  */
-function iniciarAtualizacaoAutomatica(comprovantesRef: { lista: Comprovante[] }) {
+function iniciarAtualizacaoAutomatica(comprovantesRef: { lista: Comprovante[] }, reiniciarCallback: () => Promise<void>) {
     log(`⏰ Atualização automática configurada a cada ${INTERVALO_ATUALIZACAO_COMPROVANTES / 60000} minutos`);
+    log(`⚠️  Sistema será PAUSADO durante busca de comprovantes e REINICIADO após`);
     
     setInterval(async () => {
         try {
             log('');
-            log('🔄 ========== ATUALIZAÇÃO AUTOMÁTICA DE COMPROVANTES ==========');
+            log('🔄 ========== REINÍCIO AUTOMÁTICO - BUSCA DE COMPROVANTES ==========');
+            log('⏸️  PAUSANDO robô para buscar novos comprovantes...');
+            
+            // Executar busca de comprovantes (bloqueia até terminar)
             await buscarComprovantesBackground();
             
             // Recarrega os comprovantes do arquivo atualizado
             const novosComprovantes = carregarComprovantes();
+            const comprovantesAntigos = comprovantesRef.lista.length;
             comprovantesRef.lista = novosComprovantes;
             
-            log(`✅ Lista atualizada: ${novosComprovantes.length} comprovantes disponíveis`);
-            log('============================================================');
+            log(`✅ Lista atualizada: ${comprovantesAntigos} → ${novosComprovantes.length} comprovantes (+${novosComprovantes.length - comprovantesAntigos})`);
+            log('🔄 REINICIANDO processamento do zero (página 1)...');
+            log('================================================================');
             log('');
+            
+            // Reiniciar do zero
+            await reiniciarCallback();
         } catch (error) {
             log(`❌ Erro na atualização automática: ${error}`);
+            log('⚠️  Continuando com comprovantes atuais...');
         }
     }, INTERVALO_ATUALIZACAO_COMPROVANTES);
 }
@@ -578,8 +589,16 @@ async function changeStatus() {
     log(`COMPROVANTES CARREGADOS: ${comprovantesRef.lista.length}`);
     log(`${'='.repeat(80)}\n`);
 
-    // Iniciar atualização automática em background
-    iniciarAtualizacaoAutomatica(comprovantesRef);
+    // Variável de controle para reiniciar
+    let shouldRestart = false;
+    
+    // Callback para reiniciar o processamento
+    const reiniciarCallback = async () => {
+        shouldRestart = true;
+    };
+
+    // Iniciar atualização automática em background (passa o callback)
+    iniciarAtualizacaoAutomatica(comprovantesRef, reiniciarCallback);
 
     await page.goto("https://limine-custodia.fromtis.com/login.xhtml");
     await page.setViewport({width:1366, height: 768});
@@ -609,22 +628,38 @@ async function changeStatus() {
     log('🔄 Cache será recarregado automaticamente a cada 15 itens processados');
     log('⚠️  Pressione Ctrl+C para parar a automação\n');
     
-    let currentPage = 1;
-    let globalItemIndex = 0;
-    let processadosComComprovante = 0;
-    let processadosAprovacaoDireta = 0;
-    let pulados = 0;
-    let ciclosCompletos = 0;
-    let itensNaoEncontradosNaPagina = 0;
-    let totalItensProcessados = 0; // NOVO: Contador de itens processados (com sucesso)
-    const ITENS_PARA_RECARREGAR_CACHE = 15; // Recarrega cache a cada 15 itens processados
-    
-    // Loop infinito - apenas o usuário pode parar (Ctrl+C)
+    // Loop externo para permitir reiniciar
     while (true) {
-        log(`\n📄 Processando página ${currentPage}...`);
+        shouldRestart = false; // Reset flag
         
-        await page.waitForSelector('#form\\:pagedDataTable\\:tb');
-        itensNaoEncontradosNaPagina = 0; // Resetar contador no início de cada página
+        let currentPage = 1;
+        let globalItemIndex = 0;
+        let processadosComComprovante = 0;
+        let processadosAprovacaoDireta = 0;
+        let pulados = 0;
+        let ciclosCompletos = 0;
+        let itensNaoEncontradosNaPagina = 0;
+        let totalItensProcessados = 0;
+        const ITENS_PARA_RECARREGAR_CACHE = 15;
+        
+        // Voltar para página 1 antes de começar
+        try {
+            const firstPageButton = await page.$('.rf-ds-btn.rf-ds-btn-first:not(.rf-ds-btn-dis)');
+            if (firstPageButton) {
+                await firstPageButton.click();
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                await page.waitForSelector('#form\\:pagedDataTable\\:tb');
+            }
+        } catch (error) {
+            log(`⚠️  Erro ao voltar para página 1: ${error}`);
+        }
+    
+        // Loop de processamento de páginas
+        while (!shouldRestart) {
+            log(`\n📄 Processando página ${currentPage}...`);
+            
+            await page.waitForSelector('#form\\:pagedDataTable\\:tb');
+            itensNaoEncontradosNaPagina = 0; // Resetar contador no início de cada página
         
         for (let pageRowIndex = 0; pageRowIndex <= 9; pageRowIndex++) {
             log(`\n📋 Processando item global ${globalItemIndex} (linha ${pageRowIndex} da página ${currentPage})...`);
@@ -848,10 +883,23 @@ async function changeStatus() {
             log(`⚠️ Erro ao navegar páginas: ${error?.message || 'Erro desconhecido'} - aguardando 3 segundos...`);
             await new Promise(resolve => setTimeout(resolve, 3000));
         }
+        
+        // Verifica se deve reiniciar (flag setada pela atualização automática)
+        if (shouldRestart) {
+            log('🔄 Flag de reinício detectada - quebrando loop de páginas...');
+            break;
+        }
+        }
+        
+        // Verifica se deve continuar o loop externo (reiniciar) ou se foi Ctrl+C
+        if (!shouldRestart) {
+            log('⚠️  Loop de páginas finalizado sem flag de reinício - parando automação');
+            break;
+        }
+        
+        log('✅ Reiniciando ciclo completo com novos comprovantes...\n');
     }
     
-    // Este código nunca será executado pois o loop é infinito
-    // A automação só para com Ctrl+C do usuário
     await browser.close();
     log(`🔒 Browser fechado com sucesso`);
 }
