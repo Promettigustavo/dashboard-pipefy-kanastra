@@ -53,19 +53,26 @@ SANTANDER_FUNDOS = {json.dumps(fundos, indent=4, ensure_ascii=False)}
 
 # Classe SantanderAuth simplificada para GitHub Actions
 class SantanderAuth:
-    def __init__(self, fundo_id, client_id, client_secret, cnpj, nome="", cert_path=None, key_path=None):
+    def __init__(self, fundo_id, client_id, client_secret, cnpj, nome="", cert_path=None, key_path=None, ambiente="producao"):
         self.fundo_id = fundo_id
         self.client_id = client_id
         self.client_secret = client_secret
         self.fundo_cnpj = cnpj
         self.fundo_nome = nome
+        self.ambiente = ambiente
         self._cert_path = cert_path or SANTANDER_CERT_PEM
         self._key_path = key_path or SANTANDER_KEY_PEM
         self._token_cache = None
-        # Adicionar base_urls para compatibilidade
+        # Estrutura de URLs compatível com credenciais_bancos.py
         self.base_urls = {{
-            "auth": "https://trust-open.api.santander.com.br/auth/oauth/v2/token",
-            "comprovantes": "https://trust-open.api.santander.com.br/payment_receipts_spi/consult_payment_receipts/v1/payment_receipts"
+            "sandbox": {{
+                "token": "https://trust-open.api.santander.com.br/auth/oauth/v2/token",
+                "api": "https://trust-open.api.santander.com.br"
+            }},
+            "producao": {{
+                "token": "https://trust-open.api.santander.com.br/auth/oauth/v2/token",
+                "api": "https://trust-open.api.santander.com.br"
+            }}
         }}
     
     @classmethod
