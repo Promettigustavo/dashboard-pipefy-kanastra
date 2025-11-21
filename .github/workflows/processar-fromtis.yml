@@ -64,25 +64,36 @@ jobs:
       # ============================================================
       # ETAPA 2: CONFIGURAR CREDENCIAIS
       # ============================================================
-      - name: 🔐 Configurar credenciais Santander
+      - name: 🔐 Configurar credenciais a partir do secret único
         run: |
-          echo "Criando certificados Santander a partir dos secrets..."
+          echo "Extraindo credenciais do secret KANASTRA_CREDENTIALS..."
+          
+          # Parsear o JSON do secret
+          $credentials = $env:KANASTRA_CREDENTIALS | ConvertFrom-Json
           
           # Criar diretório temporário para certificados
           $certDir = "$env:TEMP\santander_certs"
           New-Item -ItemType Directory -Force -Path $certDir | Out-Null
           
-          # Salvar certificados (os secrets já têm os newlines corretos)
-          $env:SANTANDER_CERT_PEM | Out-File -FilePath "$certDir\santander_cert.pem" -Encoding utf8
-          $env:SANTANDER_KEY_PEM | Out-File -FilePath "$certDir\santander_key.pem" -Encoding utf8
+          # Salvar certificados Santander
+          $credentials.santander.cert_pem | Out-File -FilePath "$certDir\santander_cert.pem" -Encoding utf8 -NoNewline
+          $credentials.santander.key_pem | Out-File -FilePath "$certDir\santander_key.pem" -Encoding utf8 -NoNewline
           
+          # Salvar fundos Santander como JSON
+          $credentials.santander.fundos | ConvertTo-Json -Depth 10 | Out-File -FilePath "santander_fundos_temp.json" -Encoding utf8
+          
+          # Definir variáveis de ambiente
           echo "SANTANDER_CERT_PATH=$certDir\santander_cert.pem" >> $env:GITHUB_ENV
           echo "SANTANDER_KEY_PATH=$certDir\santander_key.pem" >> $env:GITHUB_ENV
+          echo "FROMTIS_USERNAME=$($credentials.fromtis.username)" >> $env:GITHUB_ENV
+          echo "FROMTIS_PASSWORD=$($credentials.fromtis.password)" >> $env:GITHUB_ENV
           
-          echo "✅ Certificados Santander configurados"
+          echo "✅ Credenciais configuradas com sucesso"
+          echo "  - Certificados Santander: OK"
+          echo "  - Fundos Santander: OK"
+          echo "  - Credenciais Fromtis: OK"
         env:
-          SANTANDER_CERT_PEM: ${{ secrets.SANTANDER_CERT_PEM }}
-          SANTANDER_KEY_PEM: ${{ secrets.SANTANDER_KEY_PEM }}
+          KANASTRA_CREDENTIALS: ${{ secrets.KANASTRA_CREDENTIALS }}
       
       # ============================================================
       # ETAPA 3: GERAR MAPEAMENTO DE FUNDOS
@@ -129,8 +140,7 @@ jobs:
           # Salvar nome do arquivo para próximos steps
           echo "COMPROVANTES_FILE=$arquivo" >> $env:GITHUB_ENV
         env:
-          # Usar secrets do Streamlit Cloud convertidos
-          SANTANDER_FUNDOS: ${{ secrets.SANTANDER_FUNDOS }}
+          # Credenciais já configuradas nas variáveis de ambiente
           SANTANDER_CERT_PATH: ${{ env.SANTANDER_CERT_PATH }}
           SANTANDER_KEY_PATH: ${{ env.SANTANDER_KEY_PATH }}
       
@@ -160,6 +170,7 @@ jobs:
           echo "  - Modo debug: ${{ inputs.modo_debug }}"
           echo "  - Comprovantes: $env:COMPROVANTES_FILE"
           echo "  - Mapeamento: mapeamento_fundos_fromtis.json"
+          echo "  - Usuário Fromtis: $env:FROMTIS_USERNAME"
           echo ""
           
           # Executar Node.js com o robô
@@ -169,8 +180,8 @@ jobs:
           echo "✅ Processamento concluído"
         env:
           DEBUG_MODE: ${{ inputs.modo_debug }}
-          FROMTIS_USERNAME: ${{ secrets.FROMTIS_USERNAME }}
-          FROMTIS_PASSWORD: ${{ secrets.FROMTIS_PASSWORD }}
+          FROMTIS_USERNAME: ${{ env.FROMTIS_USERNAME }}
+          FROMTIS_PASSWORD: ${{ env.FROMTIS_PASSWORD }}
       
       # ============================================================
       # ETAPA 7: COLETAR RESULTADOS

@@ -2,101 +2,67 @@
 
 ## 📋 Passo a Passo para Configurar
 
-### 1️⃣ Preparar Secrets
+### 1️⃣ Gerar Secret Completo
 
-Execute o script auxiliar para gerar os secrets em formato correto:
+Execute o script que gera UM ÚNICO SECRET com todas as credenciais:
 
 ```powershell
-python preparar_secrets_github.py
+py gerar_secret_completo.py
 ```
 
-Isso criará o arquivo `santander_fundos_secret.json` que você usará no passo 3.
+O script vai:
+1. Ler os certificados Santander automaticamente
+2. Pedir usuário e senha do Fromtis
+3. Incluir todas as credenciais dos 60 fundos
+4. Gerar o arquivo `github_secret_completo.json`
 
 ---
 
-### 2️⃣ Obter Certificados Santander
-
-Os certificados já devem estar em:
-```
-C:\Users\GustavoPrometti\Cert\santander_cert.pem
-C:\Users\GustavoPrometti\Cert\santander_key.pem
-```
-
-Você vai precisar do **conteúdo completo** desses arquivos (incluindo as linhas BEGIN/END).
-
----
-
-### 3️⃣ Configurar Secrets no GitHub
+### 2️⃣ Configurar o Único Secret no GitHub
 
 Acesse: https://github.com/promettigustavo/dashboard-pipefy-kanastra/settings/secrets/actions
 
-Clique em **"New repository secret"** e adicione cada um:
+Clique em **"New repository secret"** e adicione:
 
-#### Secret 1: `SANTANDER_CERT_PEM`
-```
-Valor: Cole TODO o conteúdo de santander_cert.pem
-```
-Exemplo:
-```
------BEGIN CERTIFICATE-----
-MIIH2DCCBcCgAwIBAgIIGCJ3s92KlQYwDQYJKoZIhvcNAQELBQAwdDELMAkGA1UE
-...
------END CERTIFICATE-----
-```
+#### Secret: `KANASTRA_CREDENTIALS`
 
-#### Secret 2: `SANTANDER_KEY_PEM`
-```
-Valor: Cole TODO o conteúdo de santander_key.pem
-```
-Exemplo:
-```
------BEGIN RSA PRIVATE KEY-----
-MIIEpgIBAAKCAQEA0Ub+yAFKE2fKbODXsxKotaW6ySQmSRZ5GWYQVDYQ8dKhP8yQ
-...
------END RSA PRIVATE KEY-----
-```
+1. Abra o arquivo gerado:
+   ```powershell
+   notepad github_secret_completo.json
+   ```
 
-#### Secret 3: `SANTANDER_FUNDOS`
-```
-Valor: Cole o conteúdo de santander_fundos_secret.json (gerado no passo 1)
-```
+2. Copie **TODO** o conteúdo (Ctrl+A, Ctrl+C)
 
-#### Secret 4: `FROMTIS_USERNAME`
-```
-Valor: Seu usuário do Fromtis
-```
+3. Cole no campo "Secret" do GitHub
 
-#### Secret 5: `FROMTIS_PASSWORD`
-```
-Valor: Sua senha do Fromtis
-```
+4. Clique em "Add secret"
+
+**✅ PRONTO! Apenas 1 secret ao invés de 5!**
+
+Este secret único contém:
+- ✅ Certificado Santander (cert_pem)
+- ✅ Chave privada Santander (key_pem)
+- ✅ Credenciais de todos os 60 fundos
+- ✅ Usuário Fromtis
+- ✅ Senha Fromtis
 
 ---
 
-### 4️⃣ Fazer Commit dos Arquivos
+### 3️⃣ Fazer Commit dos Arquivos
 
 ```powershell
-# Adicionar arquivos do GitHub Actions
-git add .github/
-
-# Adicionar scripts auxiliares
-git add preparar_secrets_github.py
-git add listar_comprovantes_santander.py
-git add exportar_mapeamento_fundos.py
-
-# Adicionar código do robô
-git add puppeteer_com_comprovantes_v2.ts
-git add tsconfig.json
-git add package.json
+# Adicionar novos arquivos
+git add gerar_secret_completo.py
+git add .github/workflows/processar-fromtis.yml
+git add .github/SETUP_GITHUB_ACTIONS.md
 
 # Commit
-git commit -m "feat: Adicionar GitHub Actions para processamento Fromtis
+git commit -m "feat: Simplificar para usar apenas 1 secret GitHub
 
-- Workflow automático: segunda a sexta às 6h
-- Execução manual via interface GitHub
-- Busca automática de comprovantes Santander
-- Processamento Fromtis com Puppeteer
-- Upload de resultados como artifacts"
+- Criar gerar_secret_completo.py para gerar secret único
+- Atualizar workflow para usar KANASTRA_CREDENTIALS
+- Reduzir de 5 secrets para apenas 1
+- Facilitar configuração inicial"
 
 # Push
 git push origin main
@@ -104,7 +70,7 @@ git push origin main
 
 ---
 
-### 5️⃣ Testar a Primeira Execução
+### 4️⃣ Testar a Primeira Execução
 
 1. Acesse: https://github.com/promettigustavo/dashboard-pipefy-kanastra/actions
 
@@ -133,18 +99,14 @@ git push origin main
 
 ---
 
-## 🔍 Verificar Secrets Configurados
+## 🔍 Verificar Secret Configurado
 
 Acesse: https://github.com/promettigustavo/dashboard-pipefy-kanastra/settings/secrets/actions
 
 Você deve ver:
-- ✅ FROMTIS_PASSWORD
-- ✅ FROMTIS_USERNAME  
-- ✅ SANTANDER_CERT_PEM
-- ✅ SANTANDER_FUNDOS
-- ✅ SANTANDER_KEY_PEM
+- ✅ KANASTRA_CREDENTIALS
 
-**Total: 5 secrets**
+**Total: 1 secret (muito mais simples!)**
 
 ---
 
