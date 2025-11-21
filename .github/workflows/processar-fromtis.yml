@@ -1,0 +1,254 @@
+name: 🤖 Processar Fromtis com Comprovantes
+
+on:
+  # Permite execução manual via interface do GitHub
+  workflow_dispatch:
+    inputs:
+      dias_comprovantes:
+        description: 'Dias retroativos para buscar comprovantes'
+        required: false
+        default: '1'
+        type: choice
+        options:
+          - '1'
+          - '3'
+          - '7'
+          - '15'
+          - '30'
+      modo_debug:
+        description: 'Ativar modo debug (logs detalhados)'
+        required: false
+        default: false
+        type: boolean
+  
+  # Agendamento automático (diário às 9h UTC = 6h Brasília)
+  schedule:
+    - cron: '0 9 * * 1-5'  # Segunda a Sexta, 9h UTC
+
+jobs:
+  processar-fromtis:
+    name: Processar Fromtis
+    runs-on: windows-latest
+    timeout-minutes: 60
+    
+    steps:
+      # ============================================================
+      # ETAPA 1: PREPARAÇÃO DO AMBIENTE
+      # ============================================================
+      - name: 📂 Checkout do código
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 📦 Instalar dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests unicodedata2
+          echo "✅ Dependências Python instaladas"
+      
+      - name: 🟢 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: 📦 Instalar dependências Node
+        run: |
+          npm install
+          echo "✅ Dependências Node instaladas"
+      
+      # ============================================================
+      # ETAPA 2: CONFIGURAR CREDENCIAIS
+      # ============================================================
+      - name: 🔐 Configurar credenciais Santander
+        run: |
+          echo "Criando certificados Santander a partir dos secrets..."
+          
+          # Criar diretório temporário para certificados
+          $certDir = "$env:TEMP\santander_certs"
+          New-Item -ItemType Directory -Force -Path $certDir | Out-Null
+          
+          # Salvar certificados (os secrets já têm os newlines corretos)
+          $env:SANTANDER_CERT_PEM | Out-File -FilePath "$certDir\santander_cert.pem" -Encoding utf8
+          $env:SANTANDER_KEY_PEM | Out-File -FilePath "$certDir\santander_key.pem" -Encoding utf8
+          
+          echo "SANTANDER_CERT_PATH=$certDir\santander_cert.pem" >> $env:GITHUB_ENV
+          echo "SANTANDER_KEY_PATH=$certDir\santander_key.pem" >> $env:GITHUB_ENV
+          
+          echo "✅ Certificados Santander configurados"
+        env:
+          SANTANDER_CERT_PEM: ${{ secrets.SANTANDER_CERT_PEM }}
+          SANTANDER_KEY_PEM: ${{ secrets.SANTANDER_KEY_PEM }}
+      
+      # ============================================================
+      # ETAPA 3: GERAR MAPEAMENTO DE FUNDOS
+      # ============================================================
+      - name: 🗺️ Gerar mapeamento Fromtis → CNPJ
+        run: |
+          echo "Gerando mapeamento de fundos..."
+          python exportar_mapeamento_fundos.py
+          
+          if (Test-Path "mapeamento_fundos_fromtis.json") {
+            $content = Get-Content "mapeamento_fundos_fromtis.json" -Raw | ConvertFrom-Json
+            $count = ($content | Get-Member -MemberType NoteProperty).Count
+            echo "✅ Mapeamento gerado com $count fundos"
+          } else {
+            echo "❌ Erro: arquivo de mapeamento não foi gerado"
+            exit 1
+          }
+      
+      # ============================================================
+      # ETAPA 4: BUSCAR COMPROVANTES SANTANDER
+      # ============================================================
+      - name: 💰 Buscar comprovantes Santander
+        run: |
+          $dias = "${{ inputs.dias_comprovantes }}"
+          if ([string]::IsNullOrEmpty($dias)) { $dias = "1" }
+          
+          echo "Buscando comprovantes dos últimos $dias dias..."
+          python listar_comprovantes_santander.py --dias $dias
+          
+          # Verificar se arquivo foi gerado
+          $arquivos = Get-ChildItem -Filter "listagem_comprovantes_*.json" | Sort-Object LastWriteTime -Descending
+          if ($arquivos.Count -eq 0) {
+            echo "❌ Erro: nenhum arquivo de comprovantes gerado"
+            exit 1
+          }
+          
+          $arquivo = $arquivos[0].Name
+          $content = Get-Content $arquivo -Raw | ConvertFrom-Json
+          $count = $content.Count
+          
+          echo "✅ $count comprovantes encontrados"
+          echo "📄 Arquivo: $arquivo"
+          
+          # Salvar nome do arquivo para próximos steps
+          echo "COMPROVANTES_FILE=$arquivo" >> $env:GITHUB_ENV
+        env:
+          # Usar secrets do Streamlit Cloud convertidos
+          SANTANDER_FUNDOS: ${{ secrets.SANTANDER_FUNDOS }}
+          SANTANDER_CERT_PATH: ${{ env.SANTANDER_CERT_PATH }}
+          SANTANDER_KEY_PATH: ${{ env.SANTANDER_KEY_PATH }}
+      
+      # ============================================================
+      # ETAPA 5: COMPILAR TYPESCRIPT
+      # ============================================================
+      - name: 🔨 Compilar TypeScript
+        run: |
+          echo "Compilando puppeteer_com_comprovantes_v2.ts..."
+          npx tsc puppeteer_com_comprovantes_v2.ts --skipLibCheck
+          
+          if (Test-Path "puppeteer_com_comprovantes_v2.js") {
+            echo "✅ TypeScript compilado com sucesso"
+          } else {
+            echo "❌ Erro na compilação do TypeScript"
+            exit 1
+          }
+      
+      # ============================================================
+      # ETAPA 6: EXECUTAR ROBÔ PUPPETEER NO FROMTIS
+      # ============================================================
+      - name: 🤖 Executar robô Fromtis
+        run: |
+          echo "🚀 Iniciando processamento do Fromtis..."
+          echo ""
+          echo "📊 Configurações:"
+          echo "  - Modo debug: ${{ inputs.modo_debug }}"
+          echo "  - Comprovantes: $env:COMPROVANTES_FILE"
+          echo "  - Mapeamento: mapeamento_fundos_fromtis.json"
+          echo ""
+          
+          # Executar Node.js com o robô
+          node puppeteer_com_comprovantes_v2.js
+          
+          echo ""
+          echo "✅ Processamento concluído"
+        env:
+          DEBUG_MODE: ${{ inputs.modo_debug }}
+          FROMTIS_USERNAME: ${{ secrets.FROMTIS_USERNAME }}
+          FROMTIS_PASSWORD: ${{ secrets.FROMTIS_PASSWORD }}
+      
+      # ============================================================
+      # ETAPA 7: COLETAR RESULTADOS
+      # ============================================================
+      - name: 📊 Gerar relatório de execução
+        if: always()
+        run: |
+          echo "📋 Gerando relatório de execução..."
+          
+          # Criar arquivo de resumo
+          $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          $relatorio = @"
+          ========================================
+          RELATÓRIO DE EXECUÇÃO - FROMTIS
+          ========================================
+          Data/Hora: $timestamp
+          Dias buscados: ${{ inputs.dias_comprovantes }}
+          Modo Debug: ${{ inputs.modo_debug }}
+          
+          ARQUIVOS GERADOS:
+          "@
+          
+          # Listar arquivos gerados
+          Get-ChildItem -Filter "*.json" | ForEach-Object {
+            $size = [math]::Round($_.Length / 1KB, 2)
+            $relatorio += "`n  - $($_.Name) ($size KB)"
+          }
+          
+          # Verificar logs de execução
+          $logs = Get-ChildItem -Filter "execution_log_*.txt" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($logs) {
+            $relatorio += "`n`nÚLTIMO LOG:"
+            $relatorio += "`n" + (Get-Content $logs.FullName -Raw | Select-Object -Last 50)
+          }
+          
+          $relatorio | Out-File "relatorio_execucao.txt" -Encoding utf8
+          
+          echo "✅ Relatório gerado"
+          echo ""
+          echo $relatorio
+      
+      # ============================================================
+      # ETAPA 8: FAZER UPLOAD DOS RESULTADOS
+      # ============================================================
+      - name: 📤 Upload dos resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fromtis-resultados-${{ github.run_number }}
+          path: |
+            execution_log_*.txt
+            listagem_comprovantes_*.json
+            mapeamento_fundos_fromtis.json
+            relatorio_execucao.txt
+          retention-days: 30
+          if-no-files-found: warn
+      
+      # ============================================================
+      # ETAPA 9: NOTIFICAÇÃO DE SUCESSO/FALHA
+      # ============================================================
+      - name: ✅ Notificar sucesso
+        if: success()
+        run: |
+          echo "::notice::🎉 Processamento do Fromtis concluído com sucesso!"
+      
+      - name: ❌ Notificar falha
+        if: failure()
+        run: |
+          echo "::error::💥 Erro no processamento do Fromtis. Verifique os logs."
+      
+      # ============================================================
+      # ETAPA 10: LIMPEZA
+      # ============================================================
+      - name: 🧹 Limpar certificados temporários
+        if: always()
+        run: |
+          $certDir = "$env:TEMP\santander_certs"
+          if (Test-Path $certDir) {
+            Remove-Item -Recurse -Force $certDir
+            echo "✅ Certificados temporários removidos"
+          }

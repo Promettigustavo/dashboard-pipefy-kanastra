@@ -236,3 +236,27 @@ nome = "YUNUS NEGOCIOS SOCIAIS FUNDO DE INVESTIMENTO EM DIREITOS CREDITORIOS"
 cnpj = "29.330.482/0001-20"
 client_id = "HdkMM1v16AKGRwhZsjG3qTG8dXaccUQL"
 client_secret = "I8eMkGnnasdsLoXE"
+
+[santander_fundos.PRIMATO_FIDC]
+nome = "PRIMATO FUNDO DE INVESTIMENTO EM DIREITOS CREDITORIOS"
+cnpj = "55.074.368/0001-96"
+client_id = "lW8UL3KLlKeaelUIpRJ0igoReTpQeNoG"
+client_secret = "n0ctA5ch3DGPhjCV"
+
+[santander_fundos.MOBILITAS_FIDC]
+nome = "MOBILITAS FUNDO DE INVESTIMENTO EM DIREITOS CREDITORIOS-RESPONSABILIDADE LTDA"
+cnpj = "57.270.666/0001-87"
+client_id = "C8xseWoTGetc58TPfqI1NjpSRqi3jYzS"
+client_secret = "LtEfTle58uYddWiM"
+
+[santander_fundos.AMOVERI_FIDC]
+nome = "FUNDO DE INVESTIMENTO EM DIREITOS CREDITORIOS AMOVERI"
+cnpj = "48.213.067/0001-30"
+client_id = "kluyA97ntSFAgL61HI3jXQgNHPGnVaUC"
+client_secret = "lQcvUMIx7PRFdF6h"
+
+[santander_fundos.HURST_FIDC]
+nome = "HURST PARTNERS FUNDO DE INV EM COTAS DEFUNDOS DE INV EM DIREITOS CREDITORIOS"
+cnpj = "59.291.327/0001-02"
+client_id = "2rqRWhkYlb1QZJLzRtIpeXx9gWV4CIop"
+client_secret = "s4xi8AHahLCBfg84"
