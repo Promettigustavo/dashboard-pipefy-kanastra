@@ -54,6 +54,9 @@ SANTANDER_FUNDOS = {json.dumps(fundos, indent=4, ensure_ascii=False)}
 # Classe SantanderAuth simplificada para GitHub Actions
 class SantanderAuth:
     def __init__(self, fundo_id, client_id, client_secret, cnpj, nome="", cert_path=None, key_path=None, ambiente="producao"):
+        import os
+        from datetime import datetime, timedelta
+        
         self.fundo_id = fundo_id
         self.client_id = client_id
         self.client_secret = client_secret
@@ -62,7 +65,7 @@ class SantanderAuth:
         self.ambiente = ambiente
         self._cert_path = cert_path or SANTANDER_CERT_PEM
         self._key_path = key_path or SANTANDER_KEY_PEM
-        self._token_cache = None
+        
         # Estrutura de URLs compatível com credenciais_bancos.py
         self.base_urls = {{
             "sandbox": {{
@@ -73,6 +76,15 @@ class SantanderAuth:
                 "token": "https://trust-open.api.santander.com.br/auth/oauth/v2/token",
                 "api": "https://trust-open.api.santander.com.br"
             }}
+        }}
+        
+        # Token data (sem persistência em arquivo no GitHub Actions)
+        self.token_data = {{
+            "access_token": None,
+            "token_type": None,
+            "expires_in": None,
+            "expires_at": None,
+            "refresh_token": None
         }}
     
     @classmethod
@@ -92,8 +104,59 @@ class SantanderAuth:
     def _get_cert_tuple(self):
         return (self._cert_path, self._key_path)
     
+    def _is_token_valid(self):
+        from datetime import datetime, timedelta
+        
+        if not self.token_data.get("access_token"):
+            return False
+        
+        if not self.token_data.get("expires_at"):
+            return False
+        
+        # Verifica se o token expira em mais de 5 minutos
+        expires_at = datetime.fromisoformat(self.token_data["expires_at"])
+        return datetime.now() + timedelta(minutes=5) < expires_at
+    
     def obter_token_acesso(self):
-        # Implementação simplificada - o buscar_comprovantes_santander.py faz o real
+        import requests
+        from datetime import datetime, timedelta
+        
+        token_url = self.base_urls[self.ambiente]['token']
+        
+        headers = {{
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Application-Key": self.client_id
+        }}
+        
+        data = {{
+            "grant_type": "client_credentials",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret
+        }}
+        
+        # Usa certificado mTLS (obrigatório)
+        cert_tuple = self._get_cert_tuple()
+        response = requests.post(
+            token_url, 
+            headers=headers, 
+            data=data, 
+            cert=cert_tuple,
+            verify=True
+        )
+        
+        response.raise_for_status()
+        token_response = response.json()
+        
+        # Armazena os dados do token
+        self.token_data = {{
+            "access_token": token_response.get("access_token"),
+            "token_type": token_response.get("token_type", "Bearer"),
+            "expires_in": token_response.get("expires_in"),
+            "expires_at": (datetime.now() + timedelta(seconds=token_response.get("expires_in", 3600))).isoformat(),
+            "refresh_token": token_response.get("refresh_token")
+        }}
+        
+        return self.token_data
         if self._token_cache:
             return self._token_cache
         
