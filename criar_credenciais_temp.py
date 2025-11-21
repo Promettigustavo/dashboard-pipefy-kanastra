@@ -4,6 +4,12 @@ Script para criar credenciais_bancos.py temporário a partir do JSON do GitHub A
 import json
 import os
 import sys
+import codecs
+
+# Configurar encoding UTF-8 para Windows
+if sys.platform == 'win32':
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 def criar_credenciais_temp():
     """
