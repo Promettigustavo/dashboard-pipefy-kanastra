@@ -4,11 +4,18 @@ Baseado em buscar_comprovantes_santander.py, mas apenas lista sem gerar PDFs
 """
 
 import json
+import sys
+import codecs
 import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any
 import logging
+
+# Configurar encoding UTF-8 para Windows
+if sys.platform == 'win32':
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
 from buscar_comprovantes_santander import SantanderComprovantes
 from credenciais_bancos import SantanderAuth, SANTANDER_FUNDOS

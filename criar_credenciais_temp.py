@@ -62,6 +62,11 @@ class SantanderAuth:
         self._cert_path = cert_path or SANTANDER_CERT_PEM
         self._key_path = key_path or SANTANDER_KEY_PEM
         self._token_cache = None
+        # Adicionar base_urls para compatibilidade
+        self.base_urls = {{
+            "auth": "https://trust-open.api.santander.com.br/auth/oauth/v2/token",
+            "comprovantes": "https://trust-open.api.santander.com.br/payment_receipts_spi/consult_payment_receipts/v1/payment_receipts"
+        }}
     
     @classmethod
     def criar_por_fundo(cls, fundo_id):
