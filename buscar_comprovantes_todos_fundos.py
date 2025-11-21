@@ -121,16 +121,20 @@ def buscar_comprovantes_todos_fundos(dias: int = 1):
 
 if __name__ == "__main__":
     import sys
+    import argparse
     
-    # Número de dias para buscar (padrão: 1 dia = hoje)
-    dias = 1
-    if len(sys.argv) > 1:
-        try:
-            dias = int(sys.argv[1])
-        except ValueError:
-            logger.error("Uso: python buscar_comprovantes_todos_fundos.py [dias]")
-            logger.error("Exemplo: python buscar_comprovantes_todos_fundos.py 7")
-            sys.exit(1)
+    # Parse de argumentos
+    parser = argparse.ArgumentParser(description='Buscar comprovantes de todos os fundos Santander')
+    parser.add_argument('--dias', type=int, default=1, 
+                        help='Numero de dias retroativos para buscar (padrao: 1 = apenas hoje, maximo: 30)')
     
-    logger.info(f"Buscando comprovantes dos últimos {dias} dia(s)")
+    args = parser.parse_args()
+    dias = args.dias
+    
+    # Validar limite da API (30 dias)
+    if dias > 30:
+        logger.warning(f"Limite de 30 dias da API Santander - ajustando de {dias} para 30 dias")
+        dias = 30
+    
+    logger.info(f"Buscando comprovantes dos ultimos {dias} dia(s)")
     buscar_comprovantes_todos_fundos(dias)
