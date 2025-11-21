@@ -1,17 +1,44 @@
 """
-Script para exportar mapeamento de fundos do credenciais_bancos.py para JSON
+Script para exportar mapeamento de fundos para JSON
 Usado pelo robô TypeScript do Limine Custódia (Fromtis)
+
+Funciona em 2 modos:
+1. Local: Importa de credenciais_bancos.py
+2. GitHub Actions: Lê do arquivo temporário santander_fundos.json
 """
 import json
 import sys
 import codecs
+import os
 
 # Configurar encoding UTF-8 para Windows
 if sys.platform == 'win32':
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
     sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
 
-from credenciais_bancos import SANTANDER_FUNDOS
+def obter_fundos_santander():
+    """
+    Obtém dados dos fundos Santander de forma inteligente:
+    - GitHub Actions: lê de santander_fundos.json (criado pelo workflow)
+    - Local: importa de credenciais_bancos.py
+    """
+    # Verifica se está rodando no GitHub Actions
+    fundos_json_path = "santander_fundos.json"
+    
+    if os.path.exists(fundos_json_path):
+        print(f"🔧 Modo GitHub Actions: lendo fundos de {fundos_json_path}")
+        with open(fundos_json_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        print("🔧 Modo Local: importando de credenciais_bancos.py")
+        try:
+            from credenciais_bancos import SANTANDER_FUNDOS
+            return SANTANDER_FUNDOS
+        except ImportError:
+            print("❌ Erro: credenciais_bancos.py não encontrado e santander_fundos.json não existe")
+            sys.exit(1)
+
+SANTANDER_FUNDOS = obter_fundos_santander()
 
 def exportar_mapeamento():
     """

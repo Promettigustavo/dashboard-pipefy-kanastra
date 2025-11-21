@@ -68,8 +68,8 @@ jobs:
           $credentials.santander.cert_pem | Out-File -FilePath "$certDir\santander_cert.pem" -Encoding utf8 -NoNewline
           $credentials.santander.key_pem | Out-File -FilePath "$certDir\santander_key.pem" -Encoding utf8 -NoNewline
           
-          # Salvar fundos Santander como JSON
-          $credentials.santander.fundos | ConvertTo-Json -Depth 10 | Out-File -FilePath "santander_fundos_temp.json" -Encoding utf8
+          # Salvar fundos Santander como JSON (para uso pelos scripts Python)
+          $credentials.santander.fundos | ConvertTo-Json -Depth 10 | Out-File -FilePath "santander_fundos.json" -Encoding utf8
           
           # Definir variáveis de ambiente
           echo "SANTANDER_CERT_PATH=$certDir\santander_cert.pem" >> $env:GITHUB_ENV
@@ -83,6 +83,12 @@ jobs:
           echo "  - Credenciais Fromtis: OK"
         env:
           KANASTRA_CREDENTIALS: ${{ secrets.KANASTRA_CREDENTIALS }}
+      
+      - name: 🔧 Criar credenciais_bancos.py temporário
+        run: |
+          echo "Criando credenciais_bancos.py a partir do JSON..."
+          python criar_credenciais_temp.py
+          echo "✅ Módulo credenciais_bancos.py criado"
       
       # ============================================================
       # ETAPA 3: GERAR MAPEAMENTO DE FUNDOS
