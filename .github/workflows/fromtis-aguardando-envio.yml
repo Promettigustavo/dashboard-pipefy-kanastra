@@ -1,0 +1,258 @@
+name: 🤖 Processar Fromtis - Aguardando Envio
+
+on:
+  # Permite execução manual via interface do GitHub
+  workflow_dispatch:
+    inputs:
+      modo_debug:
+        description: 'Ativar modo debug (logs detalhados)'
+        required: false
+        default: false
+        type: boolean
+  
+  # Agendamento automático (diário às 10h UTC = 7h Brasília)
+  schedule:
+    - cron: '0 10 * * 1-5'  # Segunda a Sexta, 10h UTC
+
+jobs:
+  processar-aguardando-envio:
+    name: Processar Aguardando Envio
+    runs-on: windows-latest
+    timeout-minutes: 60
+    
+    steps:
+      # ============================================================
+      # ETAPA 1: PREPARAÇÃO DO AMBIENTE
+      # ============================================================
+      - name: 📂 Checkout do código
+        uses: actions/checkout@v4
+      
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 📦 Instalar dependências Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests unicodedata2
+          echo "✅ Dependências Python instaladas"
+      
+      - name: 🟢 Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: 📦 Instalar dependências Node
+        run: |
+          npm install puppeteer
+          npm install @types/node
+          echo "✅ Dependências Node instaladas"
+      
+      # ============================================================
+      # ETAPA 2: CONFIGURAR CREDENCIAIS
+      # ============================================================
+      - name: 🔐 Configurar credenciais a partir do secret único
+        run: |
+          echo "Extraindo credenciais do secret KANASTRA_CREDENTIALS..."
+          
+          # Parsear o JSON do secret
+          $credentials = $env:KANASTRA_CREDENTIALS | ConvertFrom-Json
+          
+          # Criar diretório temporário para certificados
+          $certDir = "$env:TEMP\santander_certs"
+          New-Item -ItemType Directory -Force -Path $certDir | Out-Null
+          
+          # Salvar certificados Santander
+          $credentials.santander.cert_pem | Out-File -FilePath "$certDir\santander_cert.pem" -Encoding utf8 -NoNewline
+          $credentials.santander.key_pem | Out-File -FilePath "$certDir\santander_key.pem" -Encoding utf8 -NoNewline
+          
+          # Salvar fundos Santander como JSON (para uso pelos scripts Python)
+          $credentials.santander.fundos | ConvertTo-Json -Depth 10 | Out-File -FilePath "santander_fundos.json" -Encoding utf8
+          
+          # Definir variáveis de ambiente
+          echo "SANTANDER_CERT_PATH=$certDir\santander_cert.pem" >> $env:GITHUB_ENV
+          echo "SANTANDER_KEY_PATH=$certDir\santander_key.pem" >> $env:GITHUB_ENV
+          echo "FROMTIS_USERNAME=$($credentials.fromtis.username)" >> $env:GITHUB_ENV
+          echo "FROMTIS_PASSWORD=$($credentials.fromtis.password)" >> $env:GITHUB_ENV
+          
+          echo "✅ Credenciais configuradas com sucesso"
+          echo "  - Certificados Santander: OK"
+          echo "  - Fundos Santander: OK"
+          echo "  - Credenciais Fromtis: OK"
+        env:
+          KANASTRA_CREDENTIALS: ${{ secrets.KANASTRA_CREDENTIALS }}
+      
+      - name: 🔧 Criar credenciais_bancos.py temporário
+        run: |
+          echo "Criando credenciais_bancos.py a partir do JSON..."
+          python criar_credenciais_temp.py
+          echo "✅ Módulo credenciais_bancos.py criado"
+      
+      # ============================================================
+      # ETAPA 3: GERAR MAPEAMENTO DE FUNDOS
+      # ============================================================
+      - name: 🗺️ Gerar mapeamento Fromtis → CNPJ
+        run: |
+          echo "Gerando mapeamento de fundos..."
+          python exportar_mapeamento_fundos.py
+          
+          if (Test-Path "mapeamento_fundos_fromtis.json") {
+            $content = Get-Content "mapeamento_fundos_fromtis.json" -Raw | ConvertFrom-Json
+            $count = ($content | Get-Member -MemberType NoteProperty).Count
+            echo "✅ Mapeamento gerado com $count fundos"
+          } else {
+            echo "❌ Erro: arquivo de mapeamento não foi gerado"
+            exit 1
+          }
+      
+      # ============================================================
+      # ETAPA 4: BUSCAR COMPROVANTES SANTANDER (DIA ATUAL)
+      # ============================================================
+      - name: 💰 Buscar comprovantes Santander do dia atual
+        run: |
+          echo "Buscando comprovantes do dia atual..."
+          python listar_comprovantes_santander.py
+          
+          # Verificar se arquivo foi gerado
+          $arquivos = Get-ChildItem -Filter "listagem_comprovantes_*.json" | Sort-Object LastWriteTime -Descending
+          if ($arquivos.Count -eq 0) {
+            echo "❌ Erro: nenhum arquivo de comprovantes gerado"
+            exit 1
+          }
+          
+          $arquivo = $arquivos[0].Name
+          $content = Get-Content $arquivo -Raw | ConvertFrom-Json
+          $count = $content.Count
+          
+          echo "✅ $count comprovantes encontrados"
+          echo "📄 Arquivo: $arquivo"
+          
+          # Salvar nome do arquivo para próximos steps
+          echo "COMPROVANTES_FILE=$arquivo" >> $env:GITHUB_ENV
+        env:
+          # Credenciais já configuradas nas variáveis de ambiente
+          SANTANDER_CERT_PATH: ${{ env.SANTANDER_CERT_PATH }}
+          SANTANDER_KEY_PATH: ${{ env.SANTANDER_KEY_PATH }}
+      
+      # ============================================================
+      # ETAPA 5: COMPILAR TYPESCRIPT
+      # ============================================================
+      - name: 🔨 Compilar TypeScript
+        run: |
+          echo "Compilando puppeteer_aguardando_envio.ts..."
+          npx tsc puppeteer_aguardando_envio.ts --skipLibCheck
+          
+          if (Test-Path "puppeteer_aguardando_envio.js") {
+            echo "✅ TypeScript compilado com sucesso"
+          } else {
+            echo "❌ Erro na compilação do TypeScript"
+            exit 1
+          }
+      
+      # ============================================================
+      # ETAPA 6: EXECUTAR ROBÔ PUPPETEER NO FROMTIS
+      # ============================================================
+      - name: 🤖 Executar robô Fromtis (Aguardando Envio)
+        run: |
+          echo "🚀 Iniciando processamento do Fromtis - AGUARDANDO ENVIO..."
+          echo ""
+          echo "📊 Configurações:"
+          echo "  - Status alvo: Aguardando Envio → Pago"
+          echo "  - Modo debug: ${{ inputs.modo_debug }}"
+          echo "  - Comprovantes: $env:COMPROVANTES_FILE"
+          echo "  - Mapeamento: mapeamento_fundos_fromtis.json"
+          echo "  - Usuário Fromtis: $env:FROMTIS_USERNAME"
+          echo ""
+          
+          # Executar Node.js com o robô
+          node puppeteer_aguardando_envio.js
+          
+          echo ""
+          echo "✅ Processamento concluído"
+        env:
+          DEBUG_MODE: ${{ inputs.modo_debug }}
+          FROMTIS_USERNAME: ${{ env.FROMTIS_USERNAME }}
+          FROMTIS_PASSWORD: ${{ env.FROMTIS_PASSWORD }}
+      
+      # ============================================================
+      # ETAPA 7: COLETAR RESULTADOS
+      # ============================================================
+      - name: 📊 Gerar relatório de execução
+        if: always()
+        run: |
+          echo "📋 Gerando relatório de execução..."
+          
+          # Criar arquivo de resumo
+          $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+          $relatorio = @"
+          ========================================
+          RELATÓRIO - AGUARDANDO ENVIO
+          ========================================
+          Data/Hora: $timestamp
+          Status: Aguardando Envio → Pago
+          Modo Debug: ${{ inputs.modo_debug }}
+          
+          ARQUIVOS GERADOS:
+          "@
+          
+          # Listar arquivos gerados
+          Get-ChildItem -Filter "*.json" | ForEach-Object {
+            $size = [math]::Round($_.Length / 1KB, 2)
+            $relatorio += "`n  - $($_.Name) ($size KB)"
+          }
+          
+          # Verificar logs de execução
+          $logs = Get-ChildItem -Filter "execution_log_aguardando_envio_*.txt" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($logs) {
+            $relatorio += "`n`nÚLTIMO LOG:"
+            $relatorio += "`n" + (Get-Content $logs.FullName -Raw | Select-Object -Last 50)
+          }
+          
+          $relatorio | Out-File "relatorio_execucao_aguardando_envio.txt" -Encoding utf8
+          
+          echo "✅ Relatório gerado"
+          echo ""
+          echo $relatorio
+      
+      # ============================================================
+      # ETAPA 8: FAZER UPLOAD DOS RESULTADOS
+      # ============================================================
+      - name: 📤 Upload dos resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fromtis-aguardando-envio-resultados-${{ github.run_number }}
+          path: |
+            execution_log_aguardando_envio_*.txt
+            listagem_comprovantes_*.json
+            mapeamento_fundos_fromtis.json
+            relatorio_execucao_aguardando_envio.txt
+          retention-days: 30
+          if-no-files-found: warn
+      
+      # ============================================================
+      # ETAPA 9: NOTIFICAÇÃO DE SUCESSO/FALHA
+      # ============================================================
+      - name: ✅ Notificar sucesso
+        if: success()
+        run: |
+          echo "::notice::🎉 Processamento Aguardando Envio concluído com sucesso!"
+      
+      - name: ❌ Notificar falha
+        if: failure()
+        run: |
+          echo "::error::💥 Erro no processamento Aguardando Envio. Verifique os logs."
+      
+      # ============================================================
+      # ETAPA 10: LIMPEZA
+      # ============================================================
+      - name: 🧹 Limpar certificados temporários
+        if: always()
+        run: |
+          $certDir = "$env:TEMP\santander_certs"
+          if (Test-Path $certDir) {
+            Remove-Item -Recurse -Force $certDir
+            echo "✅ Certificados temporários removidos"
+          }
